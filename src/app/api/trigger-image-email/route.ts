@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { triggerImageEmailCheck } from '@/lib/cron-service';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('🔄 API: Triggering image email check...');
     

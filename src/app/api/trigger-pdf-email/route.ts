@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { triggerPDFEmailCheck } from '@/lib/cron-service';
+import { triggerImageEmailCheck } from '@/lib/cron-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,18 +14,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('Manual PDF email check triggered via API');
-    await triggerPDFEmailCheck();
+    console.log('Manual image email check triggered via API');
+    await triggerImageEmailCheck();
     
     return NextResponse.json({
       success: true,
-      message: 'PDF email check completed successfully'
+      message: 'Image email check completed successfully'
     });
     
   } catch (error) {
     console.error('Error in manual PDF email trigger:', error);
     return NextResponse.json(
-      { error: 'Failed to trigger PDF email check' },
+      { error: 'Failed to trigger image email check' },
       { status: 500 }
     );
   }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: 'Use POST to trigger PDF email check',
+    message: 'Use POST to trigger image email check',
     endpoint: '/api/trigger-pdf-email'
   });
 } 

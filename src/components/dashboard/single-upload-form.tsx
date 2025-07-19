@@ -86,7 +86,6 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
       const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
       const sequence = Math.floor(Math.random() * 999) + 1; // 001-999
-      const pdfFileName = `${dateStr}-${timeStr}-${sequence.toString().padStart(3, '0')}.pdf`;
       
       const uniqueId = rollNo ? `${rollNo}-${Date.now()}` : `entry-${Date.now()}`;
 

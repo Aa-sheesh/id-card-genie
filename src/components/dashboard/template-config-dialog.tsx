@@ -80,7 +80,7 @@ function getSampleText(fieldId: string): string {
 export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSaving }: TemplateConfigDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -113,7 +113,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
           photoPlacement: currentConfig.photoPlacement,
           textFields: currentConfig.textFields,
         });
-        setImageDimensions(currentConfig.templateDimensions);
+
       } else {
         // Use default values for new template
         const defaultDimensions = { width: 856, height: 540 };
@@ -129,7 +129,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
             { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
           ],
         });
-        setImageDimensions({ width: defaultDimensions.width, height: defaultDimensions.height });
+
       }
 
       const fetchInitialPreview = async () => {
@@ -215,7 +215,6 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
       try {
         // Get actual image dimensions
         const dimensions = await getImageDimensions(file);
-        setImageDimensions(dimensions);
         
         // Calculate default positions based on actual dimensions
         const { photoPlacement, textFields } = calculateDefaultPositions(dimensions.width, dimensions.height);
@@ -508,8 +507,8 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                         <span>Field: {watchedValues.textFields?.[index]?.name || 'Untitled'}</span>
                       </div>
                       <div className="text-xs text-muted-foreground flex justify-between">
-                        <span>Color: {Object.entries(PROFESSIONAL_COLORS).find(([_, color]) => color.value === watchedValues.textFields?.[index]?.color)?.[1]?.label || 'Custom'}</span>
-                        <span>Font: {Object.entries(PROFESSIONAL_FONTS).find(([_, font]) => font.value === watchedValues.textFields?.[index]?.fontFamily)?.[1]?.label || 'Custom'}</span>
+                        <span>Color: {Object.entries(PROFESSIONAL_COLORS).find(([, color]) => color.value === watchedValues.textFields?.[index]?.color)?.[1]?.label || 'Custom'}</span>
+                        <span>Font: {Object.entries(PROFESSIONAL_FONTS).find(([, font]) => font.value === watchedValues.textFields?.[index]?.fontFamily)?.[1]?.label || 'Custom'}</span>
                       </div>
                     </div>
                   </div>
