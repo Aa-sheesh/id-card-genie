@@ -23,7 +23,11 @@ export interface TemplateConfig {
 export interface School {
     id: string;
     name: string;
-    loginId: string;
+    adminEmail: string; // For backward compatibility
+    loginEmail?: string; // New field name
+    adminUid?: string;
+    createdAt?: Date;
+    status?: string;
     templateConfig: TemplateConfig | null;
 }
 

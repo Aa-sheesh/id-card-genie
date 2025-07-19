@@ -146,7 +146,27 @@ export function AdminClient() {
 
   return (
     <div className="space-y-6">
-      <SchoolList schools={schools} onEditTemplate={handleEditTemplate} />
+      <SchoolList 
+        schools={schools} 
+        onEditTemplate={handleEditTemplate} 
+        onSchoolAdded={() => {
+          // Refresh the schools list
+          const fetchSchools = async () => {
+            if (!db) return;
+            try {
+              const schoolsQuery = query(collection(db, "schools"), orderBy("name"));
+              const schoolSnapshot = await getDocs(schoolsQuery);
+              const schoolList = schoolSnapshot.docs.map(
+                (doc) => ({ id: doc.id, ...doc.data() } as School)
+              );
+              setSchools(schoolList);
+            } catch (error) {
+              console.error("Error fetching schools:", error);
+            }
+          };
+          fetchSchools();
+        }}
+      />
 
       {editingSchool && (
         <TemplateConfigDialog
