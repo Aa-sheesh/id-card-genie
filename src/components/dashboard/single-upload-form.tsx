@@ -149,12 +149,29 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
         templatePath: config.templateImagePath,
         photoName: values.photo?.name,
         photoType: values.photo?.type,
-        errorMessage: error instanceof Error ? error.message : String(error)
+        errorMessage: error instanceof Error ? error.message : String(error),
+        userSchoolId: user?.schoolId,
+        hasDb: !!db,
+        hasStorage: !!storage,
+        environment: process.env.NODE_ENV
       });
+      
+      // More specific error message based on the error type
+      let errorMessage = "Could not submit the ID card data. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          errorMessage = "Permission denied. Please check your authentication.";
+        } else if (error.message.includes('storage')) {
+          errorMessage = "Storage error. Please check your configuration.";
+        } else if (error.message.includes('firestore')) {
+          errorMessage = "Database error. Please try again.";
+        }
+      }
+      
       toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: "Could not submit the ID card data. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
