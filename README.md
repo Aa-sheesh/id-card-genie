@@ -186,6 +186,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Powered by [Firebase](https://firebase.google.com/)
 - Icons by [Lucide React](https://lucide.dev/)
 
+## License
+
+This project is licensed under the [GNU General Public License v2.0](LICENSE).
+
+
 ---
 
 Made with ❤️ by **Aa-sheesh**
