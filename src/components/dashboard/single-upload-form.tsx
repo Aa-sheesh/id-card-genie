@@ -90,10 +90,11 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       
       const uniqueId = rollNo ? `${rollNo}-${Date.now()}` : `entry-${Date.now()}`;
 
-      // Get template image
-      const templateRef = ref(storage, config.templateImagePath);
-      const templateUrl = await getDownloadURL(templateRef);
-      const templateResponse = await fetch(templateUrl);
+      // Get template image using API route to avoid CORS issues
+      const templateResponse = await fetch(`/api/get-template?path=${encodeURIComponent(config.templateImagePath)}`);
+      if (!templateResponse.ok) {
+        throw new Error(`Failed to fetch template: ${templateResponse.statusText}`);
+      }
       const templateBuffer = await templateResponse.arrayBuffer();
 
       // Process photo for PDF
