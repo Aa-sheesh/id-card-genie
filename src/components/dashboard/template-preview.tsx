@@ -171,7 +171,7 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
                   style={{
                       left: `${field.left}%`,
                       top: `${field.top}%`,
-                      fontSize: hasData ? `${field.fontSize}px` : '8px',
+                      fontSize: `${field.fontSize}px`,
                       fontWeight: field.fontWeight,
                       color: hasData ? '#000000' : 'transparent',
                       whiteSpace: 'nowrap',
