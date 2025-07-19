@@ -167,7 +167,7 @@ export function BulkUploadForm() {
             ) : (
               <li className="text-red-600">Template configuration not found. Please contact admin.</li>
             )}
-            <li><strong>ZIP File:</strong> Should contain photos named exactly as the roll number in your Excel file (e.g., '101.jpg', '102.png')</li>
+            <li><strong>ZIP File:</strong> Should contain photos named exactly as the roll number in your Excel file (e.g., &apos;101.jpg&apos;, &apos;102.png&apos;)</li>
             <li><strong>Photo Names:</strong> Must match the roll number column in your Excel file (case-sensitive)</li>
             <li><strong>Processing:</strong> Each student gets their own PDF ID card stored in the system</li>
             <li><strong>Cleanup:</strong> Original photos are automatically deleted after PDF generation to save storage costs</li>

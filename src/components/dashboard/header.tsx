@@ -42,7 +42,7 @@ export function Header() {
         description: "You have been logged out.",
       });
       router.push("/");
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Logout Failed",

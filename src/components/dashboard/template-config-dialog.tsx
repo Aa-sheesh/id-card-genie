@@ -126,7 +126,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
         <DialogHeader>
           <DialogTitle className="font-headline">Configure ID Card Template for {school?.name}</DialogTitle>
           <DialogDescription>
-            Upload a template image and define placement for photos and text fields. The 'ID' for each field must be a valid string, e.g., 'name' or 'rollNo'. All coordinates are in pixels, based on an 856x540px template.
+            Upload a template image and define placement for photos and text fields. The &apos;ID&apos; for each field must be a valid string, e.g., &apos;name&apos; or &apos;rollNo&apos;. All coordinates are in pixels, based on an 856x540px template.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

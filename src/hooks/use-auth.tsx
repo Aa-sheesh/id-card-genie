@@ -33,32 +33,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        // Fetch user's role and schoolId from their user document in Firestore
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        
-        let role: 'admin' | 'user' = 'user';
-        let schoolId: string | null = null;
+      if (firebaseUser && db) {
+        try {
+          // Fetch user's role and schoolId from their user document in Firestore
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          let role: 'admin' | 'user' = 'user';
+          let schoolId: string | null = null;
 
-        if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            role = userData.role || 'user';
-            schoolId = userData.schoolId || null;
-        } else {
-            console.warn(`User with UID ${firebaseUser.uid} exists in Auth but not in Firestore. They will have default 'user' permissions.`);
+          if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              role = userData.role || 'user';
+              schoolId = userData.schoolId || null;
+          } else {
+              console.warn(`User with UID ${firebaseUser.uid} exists in Auth but not in Firestore. They will have default 'user' permissions.`);
+          }
+
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL,
+            role: role, 
+            schoolId: schoolId,
+          });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          // Fallback to basic user data without role/schoolId
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL,
+            role: 'user',
+            schoolId: null,
+          });
         }
-
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
-          role: role, 
-          schoolId: schoolId,
-        });
-      } else {
-        setUser(null);
-      }
+             } else if (firebaseUser) {
+         // Fallback when db is not available
+         setUser({
+           uid: firebaseUser.uid,
+           email: firebaseUser.email,
+           photoURL: firebaseUser.photoURL,
+           role: 'user',
+           schoolId: null,
+         });
+       } else {
+         setUser(null);
+       }
       setLoading(false);
     });
 
