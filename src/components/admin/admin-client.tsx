@@ -102,9 +102,12 @@ export function AdminClient() {
 
       const newConfig: TemplateConfig = {
         templateImagePath: finalImagePath,
+        templateDimensions: configData.templateDimensions,
         photoPlacement: configData.photoPlacement,
         textFields: configData.textFields,
       };
+
+      console.log("💾 Saving template config:", newConfig);
 
       const schoolDocRef = doc(db, "schools", schoolId);
       await setDoc(schoolDocRef, { templateConfig: newConfig }, { merge: true });
@@ -138,10 +141,10 @@ export function AdminClient() {
     }
   };
 
-  const handleTriggerPDFEmail = async () => {
+  const handleTriggerImageEmail = async () => {
     setIsTriggeringEmail(true);
     try {
-      const response = await fetch('/api/trigger-pdf-email', {
+      const response = await fetch('/api/trigger-image-email', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer admin', // Simple auth for now
@@ -152,17 +155,17 @@ export function AdminClient() {
       if (response.ok) {
         toast({
           title: "Email Check Triggered",
-          description: "PDF email check has been triggered successfully.",
+          description: "Image email check has been triggered successfully.",
         });
       } else {
         throw new Error('Failed to trigger email check');
       }
     } catch (error) {
-      console.error('Error triggering PDF email check:', error);
+      console.error('Error triggering image email check:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to trigger PDF email check.",
+        description: "Failed to trigger image email check.",
       });
     } finally {
       setIsTriggeringEmail(false);
@@ -182,7 +185,7 @@ export function AdminClient() {
       {/* PDF Email Trigger Button */}
       <div className="flex justify-end">
         <Button
-          onClick={handleTriggerPDFEmail}
+          onClick={handleTriggerImageEmail}
           disabled={isTriggeringEmail}
           variant="outline"
           className="flex items-center gap-2"
@@ -192,7 +195,7 @@ export function AdminClient() {
           ) : (
             <Mail className="h-4 w-4" />
           )}
-          {isTriggeringEmail ? "Checking..." : "Trigger PDF Email Check"}
+          {isTriggeringEmail ? "Checking..." : "Trigger Image Email Check"}
         </Button>
       </div>
 

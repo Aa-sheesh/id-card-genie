@@ -7,6 +7,7 @@ import { ImageIcon, Loader2, User } from 'lucide-react';
 import type { TemplateConfig, PreviewData } from '@/lib/types';
 import { storage } from '@/lib/firebase';
 import { getDownloadURL, ref } from 'firebase/storage';
+import { verifyCoordinateCalculations, calculateFieldPositions } from '@/lib/utils';
 
 
 interface TemplatePreviewProps {
@@ -57,6 +58,39 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
         fetchTemplateUrl();
     }, [config?.templateImagePath]);
 
+    // Enhanced debug logging for coordinate calculations
+    useEffect(() => {
+        if (config) {
+            const templateWidth = config.templateDimensions?.width || 856;
+            const templateHeight = config.templateDimensions?.height || 540;
+            
+            console.log("🎯 SCHOOL DASHBOARD - Template preview using config:", {
+                photoPlacement: config.photoPlacement,
+                textFields: config.textFields,
+                templateImagePath: config.templateImagePath,
+                templateDimensions: config.templateDimensions,
+                calculatedPercentages: {
+                    photo: {
+                        left: `${(config.photoPlacement.x / templateWidth) * 100}%`,
+                        top: `${(config.photoPlacement.y / templateHeight) * 100}%`,
+                        width: `${(config.photoPlacement.width / templateWidth) * 100}%`,
+                        height: `${(config.photoPlacement.height / templateHeight) * 100}%`,
+                    },
+                    textFields: config.textFields.map(field => ({
+                        id: field.id,
+                        left: `${(field.x / templateWidth) * 100}%`,
+                        top: `${(field.y / templateHeight) * 100}%`,
+                        fontSize: field.fontSize,
+                        fontWeight: field.fontWeight
+                    }))
+                }
+            });
+            
+            // Verify coordinate calculations
+            verifyCoordinateCalculations(config, 'school');
+        }
+    }, [config]);
+
 
   if (isLoadingUrl) {
     return (
@@ -79,63 +113,81 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
   }
   
   const hasData = previewData && Object.values(previewData).some(v => v);
+  const templateWidth = config.templateDimensions?.width || 856;
+  const templateHeight = config.templateDimensions?.height || 540;
+
+  // Calculate all positions consistently
+  const { photoPositions, textPositions } = calculateFieldPositions(config, 'preview');
 
   return (
     <div className="relative w-full overflow-hidden rounded-lg border">
-        <Image
-            src={templateUrl}
-            alt="ID Card Template"
-            width={856}
-            height={540}
-            className="h-auto w-full"
-            data-ai-hint="id card template"
-            priority
-        />
-        {config.photoPlacement && (
-             <div
-                className="absolute flex items-center justify-center"
-                style={{
-                    left: `${(config.photoPlacement.x / 856) * 100}%`,
-                    top: `${(config.photoPlacement.y / 540) * 100}%`,
-                    width: `${(config.photoPlacement.width / 856) * 100}%`,
-                    height: `${(config.photoPlacement.height / 540) * 100}%`,
-                }}
-            >
-                {photoPreviewUrl ? (
-                    <Image src={photoPreviewUrl} alt="User photo preview" layout="fill" objectFit="cover" className="bg-muted" />
-                ) : (
-                    <div className="w-full h-full bg-muted/70 flex items-center justify-center text-muted-foreground border-2 border-dashed border-blue-400">
-                        {hasData ? <User className="w-1/2 h-1/2 opacity-50" /> : <span className="p-1 text-xs text-blue-800 bg-white/50 rounded-sm">Photo</span>}
-                    </div>
-                )}
-            </div>
-        )}
-        {config.textFields?.map((field) => {
-            const text = previewData?.[field.id] as string;
-            const leftPercent = (field.x / 856) * 100;
-            const topPercent = (field.y / 540) * 100;
-            
-            return (
-                <div
-                key={field.id}
-                className="absolute"
-                style={{
-                    left: `${leftPercent}%`,
-                    top: `${topPercent}%`,
-                    fontSize: hasData ? `${field.fontSize}px` : '8px',
-                    fontWeight: field.fontWeight,
-                    color: hasData ? '#000000' : 'transparent',
-                    whiteSpace: 'nowrap',
-                }}
-                >
-                {text || (
-                     <div className="border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm">
-                        {field.name}
-                    </div>
-                )}
-                </div>
-            );
-        })}
+        <div 
+          className="relative w-full"
+          style={{
+            aspectRatio: `${templateWidth}/${templateHeight}`,
+            maxWidth: '100%',
+            maxHeight: '100%'
+          }}
+        >
+          <Image
+              src={templateUrl}
+              alt="ID Card Template"
+              width={templateWidth}
+              height={templateHeight}
+              className="w-full h-full object-contain"
+              style={{
+                aspectRatio: `${templateWidth}/${templateHeight}`
+              }}
+              data-ai-hint="id card template"
+              priority
+          />
+          
+          {config.photoPlacement && (
+               <div
+                  className="absolute flex items-center justify-center"
+                  style={{
+                      left: `${photoPositions.left}%`,
+                      top: `${photoPositions.top}%`,
+                      width: `${photoPositions.width}%`,
+                      height: `${photoPositions.height}%`,
+                  }}
+              >
+                  {photoPreviewUrl ? (
+                      <Image src={photoPreviewUrl} alt="User photo preview" layout="fill" objectFit="cover" className="bg-muted" />
+                  ) : (
+                      <div className="w-full h-full bg-muted/70 flex items-center justify-center text-muted-foreground border-2 border-dashed border-blue-400">
+                          {hasData ? <User className="w-1/2 h-1/2 opacity-50" /> : <span className="p-1 text-xs text-blue-800 bg-white/50 rounded-sm">Photo</span>}
+                      </div>
+                  )}
+              </div>
+          )}
+          {textPositions.map((field) => {
+              const text = previewData?.[field.id] as string;
+              
+              return (
+                  <div
+                  key={field.id}
+                  className="absolute"
+                  style={{
+                      left: `${field.left}%`,
+                      top: `${field.top}%`,
+                      fontSize: hasData ? `${field.fontSize}px` : '8px',
+                      fontWeight: field.fontWeight,
+                      color: hasData ? '#000000' : 'transparent',
+                      whiteSpace: 'nowrap',
+                      transform: 'translate(0, 0)', // Ensure no additional transforms
+                      lineHeight: '1', // Consistent line height
+                  }}
+                  >
+                  {text || (
+                       <div className="border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm">
+                          {field.name}
+                      </div>
+                  )}
+                  </div>
+              );
+          })}
+        </div>
     </div>
   );
 }

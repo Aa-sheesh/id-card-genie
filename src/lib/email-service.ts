@@ -12,8 +12,8 @@ const createTransporter = () => {
   });
 };
 
-// Interface for PDF data
-interface PDFData {
+// Interface for image data
+interface ImageData {
   id: string;
   studentName: string;
   schoolName: string;
@@ -21,9 +21,9 @@ interface PDFData {
   createdAt: Date;
 }
 
-// Get new PDFs from the last 7 days
-export const getNewPDFs = async (): Promise<PDFData[]> => {
-  console.log('🔍 Starting getNewPDFs function...');
+// Get new images from the last 7 days
+export const getNewImages = async (): Promise<ImageData[]> => {
+  console.log('🔍 Starting getNewImages function...');
   
   try {
     // Use Firebase Admin SDK for server-side operations
@@ -41,7 +41,7 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
     const schoolsRef = db.collection('schools');
     const schoolsSnapshot = await schoolsRef.get();
     
-    const pdfs: PDFData[] = [];
+    const images: ImageData[] = [];
     
     for (const schoolDoc of schoolsSnapshot.docs) {
       const schoolData = schoolDoc.data();
@@ -62,34 +62,31 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
         
         for (const doc of querySnapshot.docs) {
           const studentData = doc.data();
-          console.log('📄 Processing student:', studentData.name, '- PDF URL:', studentData.pdfUrl ? '✅ Has PDF' : '❌ No PDF');
+          console.log('📄 Processing student:', studentData.name, '- Image URL:', studentData.imageUrl ? '✅ Has Image' : '❌ No Image');
           
-          if (studentData.pdfUrl) {
+          if (studentData.imageUrl) {
             try {
-              // Get download URL for the PDF using admin SDK
-              // Try the actual bucket name from the error URL
+              // Get download URL for the image using admin SDK
               const bucketName = 'malik-studio-photo.firebasestorage.app';
               console.log('🪣 Using bucket name:', bucketName);
               const bucket = storage.bucket(bucketName);
               
               // Get the file path - prefer the direct path if available
-              let filePath = studentData.pdfUrl;
+              let filePath = studentData.imageUrl;
               
               // If it's a full Firebase Storage URL, extract the path
               if (filePath.includes('firebasestorage.googleapis.com')) {
-                // Extract path from URL like: https://firebasestorage.googleapis.com/v0/b/malik-studio-photo.appspot.com/o/schools%2Fschool-01%2Fpdfs%2F...?alt=media&token=...
                 const url = new URL(filePath);
                 const pathMatch = url.pathname.match(/\/o\/(.+)/);
                 if (pathMatch) {
                   filePath = decodeURIComponent(pathMatch[1]);
                 }
               } else if (filePath.startsWith('https://')) {
-                // If it's a different type of URL, try to extract the path
                 const url = new URL(filePath);
-                filePath = url.pathname.replace(/^\//, ''); // Remove leading slash
+                filePath = url.pathname.replace(/^\//, '');
               }
               
-              console.log('📁 Original PDF URL:', studentData.pdfUrl);
+              console.log('📁 Original Image URL:', studentData.imageUrl);
               console.log('📁 Using file path:', filePath);
               const file = bucket.file(filePath);
               const [downloadUrl] = await file.getSignedUrl({
@@ -97,7 +94,7 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
                 expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
               });
               
-              pdfs.push({
+              images.push({
                 id: doc.id,
                 studentName: studentData.name || 'Unknown Student',
                 schoolName: schoolName,
@@ -105,7 +102,7 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
                 createdAt: studentData.submittedAt?.toDate() || new Date(),
               });
               
-              console.log('✅ Added PDF for:', studentData.name);
+              console.log('✅ Added Image for:', studentData.name);
             } catch (error) {
               console.error('❌ Error getting download URL for:', studentData.name, error);
             }
@@ -116,10 +113,10 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
       }
     }
     
-    console.log('📊 Total PDFs found:', pdfs.length);
-    return pdfs;
+    console.log('📊 Total Images found:', images.length);
+    return images;
   } catch (error) {
-    console.error('❌ Error fetching new PDFs:', error);
+    console.error('❌ Error fetching new images:', error);
     console.error('❌ Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
@@ -128,13 +125,13 @@ export const getNewPDFs = async (): Promise<PDFData[]> => {
   }
 };
 
-// Send email with PDF attachments
-export const sendPDFsEmail = async (pdfs: PDFData[]): Promise<boolean> => {
-  console.log('🔍 Starting sendPDFsEmail function...');
-  console.log('📊 Number of PDFs to process:', pdfs.length);
+// Send email with image attachments
+export const sendImagesEmail = async (images: ImageData[]): Promise<boolean> => {
+  console.log('🔍 Starting sendImagesEmail function...');
+  console.log('📊 Number of images to process:', images.length);
   
-  if (pdfs.length === 0) {
-    console.log('No new PDFs to send');
+  if (images.length === 0) {
+    console.log('No new images to send');
     return true;
   }
   
@@ -164,20 +161,20 @@ export const sendPDFsEmail = async (pdfs: PDFData[]): Promise<boolean> => {
   try {
     // Create HTML content for the email
     const htmlContent = `
-      <h2>New ID Card PDFs Generated</h2>
-      <p>${pdfs.length} new ID card PDF(s) have been generated in the last 7 days:</p>
+      <h2>New ID Card Images Generated</h2>
+      <p>${images.length} new ID card image(s) have been generated in the last 7 days:</p>
       <ul>
-        ${pdfs.map(pdf => `
+        ${images.map(image => `
           <li>
-            <strong>${pdf.studentName}</strong> - ${pdf.schoolName}
+            <strong>${image.studentName}</strong> - ${image.schoolName}
             <br>
-            <small>Generated on: ${pdf.createdAt.toLocaleDateString()}</small>
+            <small>Generated on: ${image.createdAt.toLocaleDateString()}</small>
             <br>
-            <a href="${pdf.downloadUrl}" target="_blank">Download PDF</a>
+            <a href="${image.downloadUrl}" target="_blank">Download Image</a>
           </li>
         `).join('')}
       </ul>
-      <p>Total PDFs: ${pdfs.length}</p>
+      <p>Total Images: ${images.length}</p>
       <hr>
       <p><small>This is an automated email from ID Card Genie system.</small></p>
     `;
@@ -186,7 +183,7 @@ export const sendPDFsEmail = async (pdfs: PDFData[]): Promise<boolean> => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: recipientEmail,
-      subject: `ID Card Genie - ${pdfs.length} New PDF(s) Generated`,
+      subject: `ID Card Genie - ${images.length} New Image(s) Generated`,
       html: htmlContent,
     };
     
@@ -196,7 +193,7 @@ export const sendPDFsEmail = async (pdfs: PDFData[]): Promise<boolean> => {
     console.log('📧 Subject:', mailOptions.subject);
     
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully with ${pdfs.length} PDF(s)`);
+    console.log(`✅ Email sent successfully with ${images.length} image(s)`);
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);
@@ -208,19 +205,25 @@ export const sendPDFsEmail = async (pdfs: PDFData[]): Promise<boolean> => {
   }
 };
 
-// Main function to check and send PDFs
-export const checkAndSendPDFs = async (): Promise<void> => {
+// Check for new images and send email notification
+export const checkAndSendImages = async (): Promise<void> => {
+  console.log('🔍 Starting checkAndSendImages function...');
+  
   try {
-    console.log('Checking for new PDFs...');
-    const newPDFs = await getNewPDFs();
+    const images = await getNewImages();
+    console.log(`📊 Found ${images.length} new images`);
     
-    if (newPDFs.length > 0) {
-      console.log(`Found ${newPDFs.length} new PDF(s)`);
-      await sendPDFsEmail(newPDFs);
+    if (images.length > 0) {
+      const emailSent = await sendImagesEmail(images);
+      if (emailSent) {
+        console.log('✅ Email notification sent successfully');
+      } else {
+        console.error('❌ Failed to send email notification');
+      }
     } else {
-      console.log('No new PDFs found in the last 7 days');
+      console.log('📭 No new images to send');
     }
   } catch (error) {
-    console.error('Error in checkAndSendPDFs:', error);
+    console.error('❌ Error in checkAndSendImages:', error);
   }
 }; 

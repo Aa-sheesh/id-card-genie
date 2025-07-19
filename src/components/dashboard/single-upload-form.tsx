@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { db, storage } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { generateIDCardPDF } from "@/lib/utils";
+import { generateIDCardJPG } from "@/lib/utils";
 
 interface SingleUploadFormProps {
   config: TemplateConfig;
@@ -103,27 +103,27 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
         photoBuffer = await photo.arrayBuffer();
       }
 
-      // Generate PDF
-      const pdfBytes = await generateIDCardPDF(config, textData, templateBuffer, photoBuffer);
+      // Generate JPG image
+      const jpgBlob = await generateIDCardJPG(config, textData, templateBuffer, photoBuffer);
 
-      // Upload photo temporarily for PDF generation
+      // Upload photo temporarily for JPG generation
       const photoPath = `schools/${user.schoolId}/single_uploads/${uniqueId}/${photo.name}`;
       const photoStorageRef = ref(storage, photoPath);
       await uploadBytes(photoStorageRef, photo);
 
-      // Upload PDF with date-based naming
-      const pdfPath = `schools/${user.schoolId}/pdfs/${pdfFileName}`;
-      const pdfStorageRef = ref(storage, pdfPath);
-      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const pdfSnapshot = await uploadBytes(pdfStorageRef, pdfBlob);
-      const pdfUrl = await getDownloadURL(pdfSnapshot.ref);
+      // Upload JPG with date-based naming
+      const jpgFileName = `${dateStr}-${timeStr}-${sequence.toString().padStart(3, '0')}.jpg`;
+      const jpgPath = `schools/${user.schoolId}/images/${jpgFileName}`;
+      const jpgStorageRef = ref(storage, jpgPath);
+      const jpgSnapshot = await uploadBytes(jpgStorageRef, jpgBlob);
+      const jpgUrl = await getDownloadURL(jpgSnapshot.ref);
 
       // Save to Firestore
       const studentDocRef = doc(db, `schools/${user.schoolId}/students`, uniqueId);
       await setDoc(studentDocRef, {
         ...textData,
-        pdfUrl: pdfPath, // Store the file path instead of the full URL
-        pdfDownloadUrl: pdfUrl, // Store the full download URL separately if needed
+        imageUrl: jpgPath, // Store the file path instead of the full URL
+        imageDownloadUrl: jpgUrl, // Store the full download URL separately if needed
         submittedAt: new Date(),
         status: "submitted",
       });
@@ -139,7 +139,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
 
       toast({
         title: "Submission Successful",
-        description: "The ID card data and PDF have been saved.",
+        description: "The ID card data and image have been saved.",
       });
 
       form.reset();

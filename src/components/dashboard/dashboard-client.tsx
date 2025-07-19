@@ -7,7 +7,7 @@ import { SingleUploadForm } from "./single-upload-form";
 import { TemplatePreview } from "./template-preview";
 import { StudentsList } from "./students-list";
 import { useAuth } from "@/hooks/use-auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader2, AlertTriangle } from "lucide-react";
 import type { TemplateConfig, PreviewData } from "@/lib/types";
@@ -21,40 +21,50 @@ export function DashboardClient() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchConfig = async () => {
-      setLoadingConfig(true);
-      if (user?.schoolId) {
-        if (!db) {
-          console.error("Firestore is not initialized.");
-          toast({ variant: "destructive", title: "Configuration Error", description: "Cannot connect to the database." });
-          setLoadingConfig(false);
-          return;
-        }
-        try {
-          const schoolDocRef = doc(db, "schools", user.schoolId);
-          const schoolDocSnap = await getDoc(schoolDocRef);
-          if (schoolDocSnap.exists()) {
-            const schoolData = schoolDocSnap.data();
-            const templateConfig = schoolData.templateConfig as TemplateConfig || null;
-            setConfig(templateConfig);
-          } else {
-            console.log("No such school document!");
-            setConfig(null);
-          }
-        } catch (error) {
-          console.error("Error fetching school config:", error);
-          setConfig(null);
-        }
-      }
+    if (!user?.schoolId || !db) {
       setLoadingConfig(false);
-    };
-
-    if (user) {
-      fetchConfig();
-    } else {
-      setLoadingConfig(false);
+      return;
     }
-  }, [user, toast]);
+
+    console.log("🔍 Setting up real-time listener for school:", user.schoolId);
+    
+    const schoolDocRef = doc(db, "schools", user.schoolId);
+    
+    // Set up real-time listener for template changes
+    const unsubscribe = onSnapshot(schoolDocRef, (doc) => {
+      setLoadingConfig(false);
+      if (doc.exists()) {
+        const schoolData = doc.data();
+        const templateConfig = schoolData.templateConfig as TemplateConfig || null;
+        console.log("📋 Template config updated:", templateConfig);
+        if (templateConfig) {
+          console.log("📍 Photo placement:", templateConfig.photoPlacement);
+          console.log("📝 Text fields:", templateConfig.textFields);
+          console.log("📐 Template dimensions:", templateConfig.templateDimensions);
+          
+          // Verify the config structure
+          if (!templateConfig.templateDimensions) {
+            console.warn("⚠️ Template config missing dimensions, using defaults");
+            templateConfig.templateDimensions = { width: 856, height: 540 };
+          }
+        }
+        setConfig(templateConfig);
+      } else {
+        console.log("❌ No school document found for ID:", user.schoolId);
+        setConfig(null);
+      }
+    }, (error) => {
+      console.error("❌ Error in real-time listener:", error);
+      setLoadingConfig(false);
+      setConfig(null);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      console.log("🧹 Cleaning up real-time listener");
+      unsubscribe();
+    };
+  }, [user?.schoolId]);
 
   const handlePreviewDataChange = (data: PreviewData) => {
     setPreviewData(data);

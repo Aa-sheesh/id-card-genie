@@ -10,12 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, PlusCircle, Trash2, Save } from "lucide-react";
-import { type School } from "@/lib/types";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, PlusCircle, Trash2, Save, Info } from "lucide-react";
+import { type School, PROFESSIONAL_FONTS, PROFESSIONAL_COLORS } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Separator } from "../ui/separator";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref } from "firebase/storage";
+import { getImageDimensions, calculateDefaultPositions } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { verifyCoordinateCalculations, calculateFieldPositions } from "@/lib/utils";
 
 interface TemplateConfigDialogProps {
   isOpen: boolean;
@@ -27,6 +31,10 @@ interface TemplateConfigDialogProps {
 
 const formSchema = z.object({
   templateImage: z.union([z.instanceof(File), z.string()]).optional(),
+  templateDimensions: z.object({
+    width: z.coerce.number().min(1),
+    height: z.coerce.number().min(1),
+  }),
   photoPlacement: z.object({
     x: z.coerce.number().min(0),
     y: z.coerce.number().min(0),
@@ -40,20 +48,53 @@ const formSchema = z.object({
     y: z.coerce.number().min(0),
     fontSize: z.coerce.number().min(1),
     fontWeight: z.enum(["normal", "bold"]),
+    color: z.string().min(1, "Color is required."),
+    fontFamily: z.string().min(1, "Font family is required."),
   })).min(1, "At least one text field is required."),
 });
 
 export type FormValues = z.infer<typeof formSchema>;
 
+// Helper function to get realistic sample text based on field type
+function getSampleText(fieldId: string): string {
+  const sampleTexts: Record<string, string> = {
+    name: "John Doe",
+    rollNo: "2024001",
+    class: "Class 10",
+    contact: "+91 98765 43210",
+    address: "123 Main Street, City",
+    fatherName: "Father's Name",
+    motherName: "Mother's Name",
+    dob: "01/01/2000",
+    bloodGroup: "O+",
+    section: "A",
+    admissionNo: "ADM001",
+    email: "student@school.com",
+    emergencyContact: "Emergency Contact",
+    default: "Sample Text"
+  };
+  
+  return sampleTexts[fieldId] || sampleTexts.default;
+}
+
 export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSaving }: TemplateConfigDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      photoPlacement: { x: 50, y: 100, width: 100, height: 120 },
-      textFields: [],
+      templateDimensions: { width: 856, height: 540 },
+      photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
+      textFields: [
+        { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
+        { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+        { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+        { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+        { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+      ],
     }
   });
 
@@ -65,11 +106,31 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
   useEffect(() => {
     if (school && isOpen) {
       const currentConfig = school.templateConfig;
-      form.reset({
-        templateImage: currentConfig?.templateImagePath || undefined,
-        photoPlacement: currentConfig?.photoPlacement || { x: 40, y: 90, width: 150, height: 180 },
-        textFields: currentConfig?.textFields || [{ id: "name", name: "Full Name", x: 220, y: 120, fontSize: 20, fontWeight: "bold" }, { id: "rollNo", name: "Roll No", x: 220, y: 160, fontSize: 16, fontWeight: "normal" }],
-      });
+      if (currentConfig) {
+        form.reset({
+          templateImage: currentConfig.templateImagePath || undefined,
+          templateDimensions: currentConfig.templateDimensions || { width: 856, height: 540 },
+          photoPlacement: currentConfig.photoPlacement,
+          textFields: currentConfig.textFields,
+        });
+        setImageDimensions(currentConfig.templateDimensions);
+      } else {
+        // Use default values for new template
+        const defaultDimensions = { width: 856, height: 540 };
+        form.reset({
+          templateImage: undefined,
+          templateDimensions: { width: defaultDimensions.width, height: defaultDimensions.height },
+          photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
+          textFields: [
+            { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
+            { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+            { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+            { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
+            { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+          ],
+        });
+        setImageDimensions({ width: defaultDimensions.width, height: defaultDimensions.height });
+      }
 
       const fetchInitialPreview = async () => {
         const imagePath = school.templateConfig?.templateImagePath;
@@ -94,16 +155,90 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
   }, [school, isOpen, form]);
 
   const watchedValues = form.watch();
+  const currentDimensions = watchedValues.templateDimensions;
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Calculate field positions consistently for preview
+  const mockConfig = currentDimensions && watchedValues.photoPlacement && watchedValues.textFields ? {
+    templateImagePath: '',
+    templateDimensions: currentDimensions,
+    photoPlacement: watchedValues.photoPlacement,
+    textFields: watchedValues.textFields,
+  } : null;
+  
+  const { photoPositions, textPositions } = mockConfig ? calculateFieldPositions(mockConfig, 'preview') : { photoPositions: null, textPositions: [] };
+
+  // Enhanced debug logging for admin coordinate calculations
+  useEffect(() => {
+    if (watchedValues.photoPlacement && watchedValues.textFields && currentDimensions) {
+      const templateWidth = currentDimensions.width;
+      const templateHeight = currentDimensions.height;
+      
+      console.log("🎯 ADMIN DASHBOARD - Template config using values:", {
+        photoPlacement: watchedValues.photoPlacement,
+        textFields: watchedValues.textFields,
+        templateDimensions: currentDimensions,
+        calculatedPercentages: {
+          photo: {
+            left: `${(watchedValues.photoPlacement.x / templateWidth) * 100}%`,
+            top: `${(watchedValues.photoPlacement.y / templateHeight) * 100}%`,
+            width: `${(watchedValues.photoPlacement.width / templateWidth) * 100}%`,
+            height: `${(watchedValues.photoPlacement.height / templateHeight) * 100}%`,
+          },
+          textFields: watchedValues.textFields.map(field => ({
+            id: field.id,
+            left: `${(field.x / templateWidth) * 100}%`,
+            top: `${(field.y / templateHeight) * 100}%`,
+            fontSize: field.fontSize,
+            fontWeight: field.fontWeight
+          }))
+        }
+      });
+      
+      // Verify coordinate calculations
+      const mockConfig = {
+        templateImagePath: '',
+        templateDimensions: currentDimensions,
+        photoPlacement: watchedValues.photoPlacement,
+        textFields: watchedValues.textFields,
+      };
+      verifyCoordinateCalculations(mockConfig, 'admin');
+    }
+  }, [watchedValues, currentDimensions]);
+
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
-      form.setValue("templateImage", file);
-      const tempUrl = URL.createObjectURL(file);
-      setPreviewUrl(tempUrl);
+      
+      try {
+        // Get actual image dimensions
+        const dimensions = await getImageDimensions(file);
+        setImageDimensions(dimensions);
+        
+        // Calculate default positions based on actual dimensions
+        const { photoPlacement, textFields } = calculateDefaultPositions(dimensions.width, dimensions.height);
+        
+        // Update form with new dimensions and calculated positions
+        form.setValue("templateImage", file);
+        form.setValue("templateDimensions", dimensions);
+        form.setValue("photoPlacement", photoPlacement);
+        form.setValue("textFields", textFields);
+        
+        const tempUrl = URL.createObjectURL(file);
+        setPreviewUrl(tempUrl);
+        
+        console.log("📐 Image dimensions detected:", dimensions);
+        console.log("📍 Calculated default positions:", { photoPlacement, textFields });
+      } catch (error) {
+        console.error("Failed to get image dimensions:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to process image. Please try again.",
+        });
+      }
     }
   };
 
@@ -122,66 +257,107 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
       }
       setIsOpen(open);
     }}>
-      <DialogContent className=" h-[90%] max-w-4xl">
-
+      <DialogContent className="h-[90%] max-w-6xl">
         <DialogHeader>
           <DialogTitle className="font-headline">Configure ID Card Template for {school?.name}</DialogTitle>
           <DialogDescription>
-            Upload a template image and define placement for photos and text fields. The &apos;ID&apos; for each field must be a valid string, e.g., &apos;name&apos; or &apos;rollNo&apos;. All coordinates are in pixels, based on an 856x540px template.
+            Upload a template image and define placement for photos and text fields. Field positions will be automatically calculated based on the uploaded image dimensions.
           </DialogDescription>
         </DialogHeader>
+        
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[80vh] overflow-y-auto p-1">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg font-headline">Template Preview</h3>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-h-[80vh] overflow-y-auto p-1">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg font-headline">Template Preview</h3>
+                {currentDimensions && (
+                  <div className="text-sm text-muted-foreground">
+                    Dimensions: {currentDimensions.width} × {currentDimensions.height}px
+                  </div>
+                )}
+              </div>
+              
               <div className="relative w-full overflow-hidden rounded-lg border bg-muted">
                 {isLoadingPreview ? (
                   <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : previewUrl ? (
-                  <Image src={previewUrl} alt="Template Preview" width={856} height={540} className="w-full h-auto aspect-[85.6/54] object-contain" data-ai-hint="id card background" />
+                  <div 
+                    className="relative w-full"
+                    style={{
+                      aspectRatio: currentDimensions ? `${currentDimensions.width}/${currentDimensions.height}` : '85.6/54',
+                      maxWidth: '100%',
+                      maxHeight: '100%'
+                    }}
+                  >
+                    <Image 
+                      src={previewUrl} 
+                      alt="Template Preview" 
+                      width={currentDimensions?.width || 856} 
+                      height={currentDimensions?.height || 540} 
+                      className="w-full h-full object-contain" 
+                      style={{
+                        aspectRatio: currentDimensions ? `${currentDimensions.width}/${currentDimensions.height}` : '85.6/54'
+                      }}
+                      data-ai-hint="id card background" 
+                    />
+                    
+                    {photoPositions && (
+                      <div
+                        className="absolute border-2 border-dashed border-blue-400 bg-blue-400/20 flex items-center justify-center"
+                        style={{
+                          left: `${photoPositions.left}%`,
+                          top: `${photoPositions.top}%`,
+                          width: `${photoPositions.width}%`,
+                          height: `${photoPositions.height}%`,
+                        }}
+                      >
+                        <span className="p-1 text-xs text-blue-800 bg-white/50 rounded-sm">Photo</span>
+                      </div>
+                    )}
+                    
+                    {textPositions.map((field, index) => (
+                      <div
+                        key={index}
+                        className="absolute border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm"
+                        style={{
+                          left: `${field.left}%`,
+                          top: `${field.top}%`,
+                          fontSize: `${watchedValues.textFields?.[index]?.fontSize || 12}px`,
+                          fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
+                          color: watchedValues.textFields?.[index]?.color || '#000000',
+                          fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
+                          whiteSpace: 'nowrap',
+                          transform: 'translate(0, 0)', // Ensure no additional transforms
+                          lineHeight: '1', // Consistent line height
+                        }}
+                      >
+                        {getSampleText(watchedValues.textFields?.[index]?.id || 'name')}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
                     <p className="text-sm text-muted-foreground">Upload an image to see a preview</p>
                   </div>
                 )}
-                {previewUrl && watchedValues.photoPlacement && (
-                  <div
-                    className="absolute border-2 border-dashed border-blue-400 bg-blue-400/20 flex items-center justify-center"
-                    style={{
-                      left: `${(watchedValues.photoPlacement.x / 856) * 100}%`,
-                      top: `${(watchedValues.photoPlacement.y / 540) * 100}%`,
-                      width: `${(watchedValues.photoPlacement.width / 856) * 100}%`,
-                      height: `${(watchedValues.photoPlacement.height / 540) * 100}%`,
-                    }}
-                  >
-                    <span className="p-1 text-xs text-blue-800 bg-white/50 rounded-sm">Photo</span>
-                  </div>
-                )}
-                {previewUrl && watchedValues.textFields?.map((field, index) => (
-                  <div
-                    key={index}
-                    className="absolute border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm"
-                    style={{
-                      left: `${(field.x / 856) * 100}%`,
-                      top: `${(field.y / 540) * 100}%`,
-                      fontSize: '8px',
-                      fontWeight: field.fontWeight,
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {field.name || "Untitled"}
-                  </div>
-                ))}
               </div>
+
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Field positions are automatically calculated based on your uploaded image dimensions. 
+                  You can adjust them manually using the controls on the right.
+                </AlertDescription>
+              </Alert>
 
               <FormField
                 control={form.control}
                 name="templateImage"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Template Image (856x540px recommended)</FormLabel>
+                    <FormLabel>Template Image</FormLabel>
                     <FormControl>
                       <Input type="file" accept="image/png, image/jpeg" onChange={handleImageChange} />
                     </FormControl>
@@ -189,7 +365,9 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                   </FormItem>
                 )}
               />
-              <Separator />
+            </div>
+
+            <div className="space-y-4">
               <h3 className="font-semibold text-lg font-headline">Photo Placement (pixels)</h3>
               <div className="grid grid-cols-2 gap-2">
                 <FormField control={form.control} name="photoPlacement.x" render={({ field }) => (<FormItem><FormLabel>X</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
@@ -197,9 +375,9 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                 <FormField control={form.control} name="photoPlacement.width" render={({ field }) => (<FormItem><FormLabel>Width</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
                 <FormField control={form.control} name="photoPlacement.height" render={({ field }) => (<FormItem><FormLabel>Height</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
               </div>
-            </div>
 
-            <div className="space-y-4">
+              <Separator />
+
               <h3 className="font-semibold text-lg font-headline">Text Fields</h3>
               <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 border-l pl-4">
                 {fields.map((item, index) => (
@@ -210,7 +388,40 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                     <div className="grid grid-cols-2 gap-2">
                       <FormField control={form.control} name={`textFields.${index}.x`} render={({ field }) => (<FormItem><FormLabel>X</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
                       <FormField control={form.control} name={`textFields.${index}.y`} render={({ field }) => (<FormItem><FormLabel>Y</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
-                      <FormField control={form.control} name={`textFields.${index}.fontSize`} render={({ field }) => (<FormItem><FormLabel>Font Size (px)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
+                      <FormField control={form.control} name={`textFields.${index}.fontSize`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Font Size (px)</FormLabel>
+                          <FormControl>
+                            <div className="space-y-2">
+                              <Input type="number" {...field} min="8" max="48" />
+                              <input 
+                                type="range" 
+                                min="8" 
+                                max="48" 
+                                value={field.value || 12}
+                                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                              <div className="flex gap-1 flex-wrap">
+                                {[10, 12, 14, 16, 18, 20, 24].map((size) => (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => field.onChange(size)}
+                                    className={`px-2 py-1 text-xs rounded border ${
+                                      field.value === size 
+                                        ? 'bg-primary text-primary-foreground' 
+                                        : 'bg-background hover:bg-muted'
+                                    }`}
+                                  >
+                                    {size}px
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )} />
                       <FormField control={form.control} name={`textFields.${index}.fontWeight`} render={({ field }) => (
                         <FormItem>
                           <FormLabel>Font Weight</FormLabel>
@@ -227,13 +438,87 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                       )}
                       />
                     </div>
+                    
+                    {/* Color and Font Selection */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField control={form.control} name={`textFields.${index}.color`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Text Color</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select color" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(PROFESSIONAL_COLORS).map(([key, color]) => (
+                                <SelectItem key={key} value={color.value}>
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-4 h-4 rounded border" 
+                                      style={{ backgroundColor: color.value }}
+                                    />
+                                    {color.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                      />
+                      <FormField control={form.control} name={`textFields.${index}.fontFamily`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Font Family</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select font" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(PROFESSIONAL_FONTS).map(([key, font]) => (
+                                <SelectItem key={key} value={font.value}>
+                                  <span style={{ fontFamily: font.value }}>{font.label}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                      />
+                    </div>
+                    
+                    {/* Live Font Preview */}
+                    <div className="mt-3 p-3 bg-muted/50 rounded-md border">
+                      <FormLabel className="text-sm font-medium mb-2 block">Font Preview</FormLabel>
+                      <div 
+                        className="bg-white p-2 rounded border"
+                        style={{
+                          fontSize: `${watchedValues.textFields?.[index]?.fontSize || 12}px`,
+                          fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
+                          fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
+                          color: watchedValues.textFields?.[index]?.color || '#000000',
+                          lineHeight: '1.2',
+                          minHeight: '2em',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        {getSampleText(watchedValues.textFields?.[index]?.id || 'name')}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 flex justify-between">
+                        <span>Font: {watchedValues.textFields?.[index]?.fontWeight || 'normal'} {watchedValues.textFields?.[index]?.fontSize || 12}px</span>
+                        <span>Field: {watchedValues.textFields?.[index]?.name || 'Untitled'}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground flex justify-between">
+                        <span>Color: {Object.entries(PROFESSIONAL_COLORS).find(([_, color]) => color.value === watchedValues.textFields?.[index]?.color)?.[1]?.label || 'Custom'}</span>
+                        <span>Font: {Object.entries(PROFESSIONAL_FONTS).find(([_, font]) => font.value === watchedValues.textFields?.[index]?.fontFamily)?.[1]?.label || 'Custom'}</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
                 {form.formState.errors.textFields?.root && (
                   <p className="text-sm font-medium text-destructive">{form.formState.errors.textFields.root.message}</p>
                 )}
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal" })}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Field
               </Button>
             </div>
