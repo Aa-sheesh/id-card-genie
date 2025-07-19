@@ -64,35 +64,35 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
 
   useEffect(() => {
     if (school && isOpen) {
-        const currentConfig = school.templateConfig;
-        form.reset({
-            templateImage: currentConfig?.templateImagePath || undefined,
-            photoPlacement: currentConfig?.photoPlacement || { x: 40, y: 90, width: 150, height: 180 },
-            textFields: currentConfig?.textFields || [{ id: "name", name: "Full Name", x: 220, y: 120, fontSize: 20, fontWeight: "bold" }, { id: "rollNo", name: "Roll No", x: 220, y: 160, fontSize: 16, fontWeight: "normal" }],
-        });
+      const currentConfig = school.templateConfig;
+      form.reset({
+        templateImage: currentConfig?.templateImagePath || undefined,
+        photoPlacement: currentConfig?.photoPlacement || { x: 40, y: 90, width: 150, height: 180 },
+        textFields: currentConfig?.textFields || [{ id: "name", name: "Full Name", x: 220, y: 120, fontSize: 20, fontWeight: "bold" }, { id: "rollNo", name: "Roll No", x: 220, y: 160, fontSize: 16, fontWeight: "normal" }],
+      });
 
-        const fetchInitialPreview = async () => {
-            const imagePath = school.templateConfig?.templateImagePath;
-            if (imagePath && storage) {
-                setIsLoadingPreview(true);
-                try {
-                    const url = await getDownloadURL(ref(storage, imagePath));
-                    setPreviewUrl(url);
-                } catch (e) {
-                    console.warn("Admin preview failed. This can happen if the admin role doesn't have read access to all school templates, which is acceptable.", e);
-                    setPreviewUrl(null);
-                } finally {
-                    setIsLoadingPreview(false);
-                }
-            } else {
-                setPreviewUrl(null);
-                setIsLoadingPreview(false);
-            }
-        };
-        fetchInitialPreview();
+      const fetchInitialPreview = async () => {
+        const imagePath = school.templateConfig?.templateImagePath;
+        if (imagePath && storage) {
+          setIsLoadingPreview(true);
+          try {
+            const url = await getDownloadURL(ref(storage, imagePath));
+            setPreviewUrl(url);
+          } catch (e) {
+            console.warn("Admin preview failed. This can happen if the admin role doesn't have read access to all school templates, which is acceptable.", e);
+            setPreviewUrl(null);
+          } finally {
+            setIsLoadingPreview(false);
+          }
+        } else {
+          setPreviewUrl(null);
+          setIsLoadingPreview(false);
+        }
+      };
+      fetchInitialPreview();
     }
   }, [school, isOpen, form]);
-  
+
   const watchedValues = form.watch();
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,20 +109,21 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
 
   function onSubmit(values: FormValues) {
     if (!values.templateImage && !school?.templateConfig?.templateImagePath) {
-        form.setError("templateImage", { type: "manual", message: "A template image is required." })
-        return;
+      form.setError("templateImage", { type: "manual", message: "A template image is required." })
+      return;
     }
     onSave(values);
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open && previewUrl && previewUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        setIsOpen(open);
+      if (!open && previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setIsOpen(open);
     }}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className=" h-[90%] max-w-4xl">
+
         <DialogHeader>
           <DialogTitle className="font-headline">Configure ID Card Template for {school?.name}</DialogTitle>
           <DialogDescription>
@@ -134,12 +135,12 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
             <div className="space-y-4">
               <h3 className="font-semibold text-lg font-headline">Template Preview</h3>
               <div className="relative w-full overflow-hidden rounded-lg border bg-muted">
-                 {isLoadingPreview ? (
-                    <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                 ) : previewUrl ? (
-                  <Image src={previewUrl} alt="Template Preview" width={856} height={540} className="w-full h-auto aspect-[85.6/54] object-contain" data-ai-hint="id card background"/>
+                {isLoadingPreview ? (
+                  <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : previewUrl ? (
+                  <Image src={previewUrl} alt="Template Preview" width={856} height={540} className="w-full h-auto aspect-[85.6/54] object-contain" data-ai-hint="id card background" />
                 ) : (
                   <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
                     <p className="text-sm text-muted-foreground">Upload an image to see a preview</p>
@@ -211,26 +212,26 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                       <FormField control={form.control} name={`textFields.${index}.y`} render={({ field }) => (<FormItem><FormLabel>Y</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
                       <FormField control={form.control} name={`textFields.${index}.fontSize`} render={({ field }) => (<FormItem><FormLabel>Font Size (px)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
                       <FormField control={form.control} name={`textFields.${index}.fontWeight`} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Font Weight</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Select weight" /></SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="normal">Normal</SelectItem>
-                                <SelectItem value="bold">Bold</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
+                        <FormItem>
+                          <FormLabel>Font Weight</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select weight" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="bold">Bold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
                       />
                     </div>
                   </div>
                 ))}
-                 {form.formState.errors.textFields?.root && (
-                    <p className="text-sm font-medium text-destructive">{form.formState.errors.textFields.root.message}</p>
-                 )}
+                {form.formState.errors.textFields?.root && (
+                  <p className="text-sm font-medium text-destructive">{form.formState.errors.textFields.root.message}</p>
+                )}
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal" })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Field
