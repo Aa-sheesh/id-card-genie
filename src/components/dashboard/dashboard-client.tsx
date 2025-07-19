@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SingleUploadForm } from "./single-upload-form";
-import { BulkUploadForm } from "./bulk-upload-form";
 import { TemplatePreview } from "./template-preview";
 import { StudentsList } from "./students-list";
 import { useAuth } from "@/hooks/use-auth";
@@ -103,9 +102,8 @@ export function DashboardClient() {
              <Card className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></Card>
         ) : hasConfig ? (
             <Tabs defaultValue="single">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="single">Single Upload</TabsTrigger>
-                    <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
                     <TabsTrigger value="submissions">Submissions</TabsTrigger>
                 </TabsList>
                 <TabsContent value="single">
@@ -118,19 +116,6 @@ export function DashboardClient() {
                     </CardHeader>
                     <CardContent>
                         <SingleUploadForm config={config} onDataChange={handlePreviewDataChange} />
-                    </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="bulk">
-                    <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Bulk ID Card Upload</CardTitle>
-                        <CardDescription>
-                        Upload an Excel file with student data and a ZIP file with photos.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <BulkUploadForm />
                     </CardContent>
                     </Card>
                 </TabsContent>

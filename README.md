@@ -6,7 +6,6 @@ A modern, professional ID card generation and management system built with Next.
 
 - **🔐 Secure Authentication** - Firebase Authentication with role-based access
 - **📋 Template Management** - Customize ID card templates with drag-and-drop interface
-- **📊 Bulk Upload** - Process multiple students with Excel files and photo ZIPs
 - **🖼️ PDF Generation** - High-quality PDF ID cards with custom layouts
 - **🏫 Multi-School Support** - Manage multiple schools and their templates
 - **📱 Responsive Design** - Works seamlessly on desktop and mobile devices
