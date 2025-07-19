@@ -177,7 +177,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Documentation**: [docs/](docs/)
 - **Issues**: [GitHub Issues](https://github.com/your-username/id-card-genie/issues)
-- **Email**: aa.sheesh@example.com
+- **Contact Me**: [Links here](https://linktr.ee/aa_sheesh)
+- **Email**: aashishs4912345@gmail.com
 
 ## 🙏 Acknowledgments
 
