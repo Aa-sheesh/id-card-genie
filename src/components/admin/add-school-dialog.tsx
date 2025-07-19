@@ -89,12 +89,12 @@ export function AddSchoolDialog({ isOpen, setIsOpen, onSchoolAdded }: AddSchoolD
 
       const { user } = userCredential;
 
-      // Create school document in Firestore
-      const schoolId = `school-${Date.now()}`;
-      const schoolDocRef = doc(db, "schools", schoolId);
+      // Create school document with custom ID
+      const customSchoolId = values.schoolName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const schoolDocRef = doc(db, "schools", customSchoolId);
       
       await setDoc(schoolDocRef, {
-        id: schoolId,
+        id: customSchoolId,
         name: values.schoolName,
         adminEmail: values.adminEmail, // Keep for backward compatibility
         loginEmail: values.adminEmail, // New field name
@@ -109,7 +109,7 @@ export function AddSchoolDialog({ isOpen, setIsOpen, onSchoolAdded }: AddSchoolD
         uid: user.uid,
         email: values.adminEmail,
         role: "user", // Regular user, not admin
-        schoolId: schoolId,
+        schoolId: customSchoolId,
         createdAt: new Date(),
       });
 

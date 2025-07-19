@@ -80,6 +80,14 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
     try {
       const { photo, ...textData } = values;
       const rollNo = (textData as Record<string, string>)["rollNo"];
+      
+      // Generate date-based filename
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+      const sequence = Math.floor(Math.random() * 999) + 1; // 001-999
+      const pdfFileName = `${dateStr}-${timeStr}-${sequence.toString().padStart(3, '0')}.pdf`;
+      
       const uniqueId = rollNo ? `${rollNo}-${Date.now()}` : `entry-${Date.now()}`;
 
       // Get template image
@@ -100,11 +108,10 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       // Upload photo temporarily for PDF generation
       const photoPath = `schools/${user.schoolId}/single_uploads/${uniqueId}/${photo.name}`;
       const photoStorageRef = ref(storage, photoPath);
-      const photoSnapshot = await uploadBytes(photoStorageRef, photo);
-      const photoUrl = await getDownloadURL(photoSnapshot.ref);
+      await uploadBytes(photoStorageRef, photo);
 
-      // Upload PDF
-      const pdfPath = `schools/${user.schoolId}/pdfs/${uniqueId}/id_card.pdf`;
+      // Upload PDF with date-based naming
+      const pdfPath = `schools/${user.schoolId}/pdfs/${pdfFileName}`;
       const pdfStorageRef = ref(storage, pdfPath);
       const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
       const pdfSnapshot = await uploadBytes(pdfStorageRef, pdfBlob);
@@ -114,7 +121,8 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       const studentDocRef = doc(db, `schools/${user.schoolId}/students`, uniqueId);
       await setDoc(studentDocRef, {
         ...textData,
-        pdfUrl, // Only store PDF URL, not photo URL
+        pdfUrl: pdfPath, // Store the file path instead of the full URL
+        pdfDownloadUrl: pdfUrl, // Store the full download URL separately if needed
         submittedAt: new Date(),
         status: "submitted",
       });
@@ -161,12 +169,19 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
             <FormField
               key={field.id}
               control={form.control}
-              name={field.id as any}
+              name={field.id as keyof z.infer<typeof formSchema>}
               render={({ field: formField }) => (
                 <FormItem>
                   <FormLabel>{field.name}</FormLabel>
                   <FormControl>
-                    <Input placeholder={`Enter ${field.name}`} {...formField} />
+                    <Input 
+                      placeholder={`Enter ${field.name}`} 
+                      value={String(formField.value || '')}
+                      onChange={formField.onChange}
+                      onBlur={formField.onBlur}
+                      name={formField.name}
+                      ref={formField.ref}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,6 +201,9 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                   type="file"
                   accept="image/png, image/jpeg"
                   onChange={(e) => field.onChange(e.target.files?.[0])}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                 />
               </FormControl>
               <FormDescription>Max 1MB, PNG or JPG format.</FormDescription>

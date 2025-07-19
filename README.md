@@ -8,6 +8,7 @@ A modern, professional ID card generation and management system built with Next.
 - **🏫 School Management** - Create schools and assign login credentials
 - **📋 Template Management** - Customize ID card templates with drag-and-drop interface
 - **🖼️ PDF Generation** - High-quality PDF ID cards with custom layouts
+- **📧 Automated Email Notifications** - Receive PDF summaries every 7 days via email
 - **🏫 Multi-School Support** - Manage multiple schools and their templates
 - **📱 Responsive Design** - Works seamlessly on desktop and mobile devices
 - **⚡ Real-time Updates** - Live preview and instant feedback
@@ -38,14 +39,20 @@ A modern, professional ID card generation and management system built with Next.
    cp .env.example .env.local
    ```
    
-   Fill in your Firebase configuration:
+   Fill in your configuration:
    ```env
+   # Firebase Configuration
    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+   
+   # Email Configuration for PDF Notifications
+   EMAIL_USER=your_email@gmail.com
+   EMAIL_PASSWORD=your_app_password
+   NOTIFICATION_EMAIL=recipient@example.com
    ```
 
 4. **Set up Firebase**
@@ -56,6 +63,12 @@ A modern, professional ID card generation and management system built with Next.
      ```bash
      firebase deploy --only firestore:rules,storage
      ```
+
+5. **Set up Email Notifications**
+   - For Gmail: Enable 2-Step Verification and generate an App Password
+   - Go to Google Account → Security → App passwords
+   - Generate a password for "Mail" and use it in `EMAIL_PASSWORD`
+   - Set `NOTIFICATION_EMAIL` to the email where you want to receive PDF summaries
 
 5. **Run the development server**
    ```bash
@@ -120,6 +133,9 @@ The app includes optimized security rules for Firestore and Storage:
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket | ✅ |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID | ✅ |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID | ✅ |
+| `EMAIL_USER` | Email address for sending notifications | ✅ |
+| `EMAIL_PASSWORD` | App password for email service | ✅ |
+| `NOTIFICATION_EMAIL` | Email address to receive PDF summaries | ✅ |
 
 ## 🚀 Deployment
 

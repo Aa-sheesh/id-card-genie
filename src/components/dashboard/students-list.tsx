@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
-import { Loader2, Download, Eye, Calendar } from "lucide-react";
+import { Loader2, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface StudentData {
@@ -20,7 +20,7 @@ interface StudentData {
   status: string;
   source?: string;
   batchId?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function StudentsList() {

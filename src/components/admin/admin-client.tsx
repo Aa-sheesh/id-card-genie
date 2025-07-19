@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { db, auth, isConfigured, storage } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, query, orderBy } from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function AdminClient() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export function AdminClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [isTriggeringEmail, setIsTriggeringEmail] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -136,6 +138,37 @@ export function AdminClient() {
     }
   };
 
+  const handleTriggerPDFEmail = async () => {
+    setIsTriggeringEmail(true);
+    try {
+      const response = await fetch('/api/trigger-pdf-email', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer admin', // Simple auth for now
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Email Check Triggered",
+          description: "PDF email check has been triggered successfully.",
+        });
+      } else {
+        throw new Error('Failed to trigger email check');
+      }
+    } catch (error) {
+      console.error('Error triggering PDF email check:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to trigger PDF email check.",
+      });
+    } finally {
+      setIsTriggeringEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -146,6 +179,23 @@ export function AdminClient() {
 
   return (
     <div className="space-y-6">
+      {/* PDF Email Trigger Button */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleTriggerPDFEmail}
+          disabled={isTriggeringEmail}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          {isTriggeringEmail ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Mail className="h-4 w-4" />
+          )}
+          {isTriggeringEmail ? "Checking..." : "Trigger PDF Email Check"}
+        </Button>
+      </div>
+
       <SchoolList 
         schools={schools} 
         onEditTemplate={handleEditTemplate} 
