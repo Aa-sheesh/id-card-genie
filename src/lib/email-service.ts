@@ -1,19 +1,28 @@
-import nodemailer from 'nodemailer';
 import { getAdminServices } from './firebase-admin';
 import ExcelJS from 'exceljs';
 import archiver from 'archiver';
 import stream from 'stream';
+import SibApiV3Sdk from '@sendinblue/client';
 
 // Email configuration
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail', // or your email service
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD, // Use app password for Gmail
-    },
-  });
-};
+// REMOVE nodemailer and Gmail logic
+// REMOVE: import nodemailer from 'nodemailer';
+// REMOVE: const createTransporter = () => { ... } (lines 8-15)
+
+const brevo = new SibApiV3Sdk.TransactionalEmailsApi();
+const brevoApiKey = process.env.BREVO_API_KEY || '';
+brevo.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+
+export async function sendBrevoEmail({ to, subject, html, attachments }: { to: string, subject: string, html: string, attachments?: Array<{ content: string, name: string }> }) {
+  const emailData = {
+    sender: { name: 'ID Card Genie', email: process.env.SENDER_NOTIFICATION_EMAIL || '' },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    attachment: attachments,
+  };
+  await brevo.sendTransacEmail(emailData);
+}
 
 // Interface for image data
 interface ImageData {
@@ -280,17 +289,16 @@ async function uploadGlobalZipToStorage(buffer: Buffer): Promise<string> {
 
 // Send email with Excel attachment and ZIP link for a school
 export const sendImagesEmail = async (schoolId: string | undefined, images: ImageData[]): Promise<boolean> => {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
-  const recipientEmail = process.env.NOTIFICATION_EMAIL;
-  if (!recipientEmail || !emailUser || !emailPassword) {
-    console.error('❌ Email config missing', { recipientEmail, emailUser, emailPassword });
+  const recipientEmail = process.env.RECIEVER_NOTIFICATION_EMAIL;
+  if (!recipientEmail) {
+    console.error('❌ Email config missing', { recipientEmail });
     return false;
   }
-  const transporter = createTransporter();
-  
+
   let downloadUrl = '';
   let htmlContent = '';
+  let attachments = undefined;
+  let subject = '';
 
   if (schoolId) {
     // Per-school: generate/upload ZIP and email link
@@ -301,6 +309,7 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
     await file.save(zipBuffer, { contentType: 'application/zip' });
     const [url] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 24 * 60 * 60 * 1000 });
     downloadUrl = url;
+    subject = `ID Card Genie - Images Download Link`;
     htmlContent = `
       <h2>ID Card Images</h2>
       <p>Click the link below to download all images for this school as a ZIP file (includes Excel).</p>
@@ -308,9 +317,13 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
       <hr>
       <p><small>This is an automated email from ID Card Genie system.</small></p>
     `;
+    // Attach the ZIP as well (optional, can comment out if not needed)
+    const zipBase64 = zipBuffer.toString('base64');
+    attachments = [{ content: zipBase64, name: `${schoolId}-images.zip` }];
   } else {
     // Global: just send the Firebase Storage /schools folder link
     const firebaseFolderUrl = 'https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools';
+    subject = `ID Card Genie - Images Download Link (All Schools)`;
     htmlContent = `
       <h2>ID Card Images</h2>
       <p>Here is the link to all school folders in Firebase Storage. Please log in with your admin account to access and download files.</p>
@@ -319,21 +332,12 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
       <p><small>This is an automated email from ID Card Genie system.</small></p>
     `;
   }
-    
-    const mailOptions = {
-    from: emailUser,
-      to: recipientEmail,
-    subject: `ID Card Genie - Images Download Link${schoolId ? '' : ' (All Schools)'}`,
-      html: htmlContent,
-    };
-    
+
   try {
-    console.log('Sending email with download link...');
-    await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully', schoolId ? `for school ${schoolId}` : 'for all schools');
+    await sendBrevoEmail({ to: recipientEmail, subject, html: htmlContent, attachments });
     return true;
   } catch (error) {
-    console.error('❌ Error sending email:', error);
+    console.error('❌ Error sending email via Brevo:', error);
     return false;
   }
 };
