@@ -37,9 +37,13 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
   // Dynamically generate Zod schema
   const formSchema = z.object({
     ...config.textFields.reduce((acc, field) => {
-      acc[field.id] = z.string().min(1, { message: `${field.name} is required.` });
+      if (field.id === 'class' || field.id === 'rollNo') {
+        acc[field.id] = z.coerce.number().min(1, { message: `${field.name} is required and must be a number.` });
+      } else {
+        acc[field.id] = z.string().min(1, { message: `${field.name} is required.` });
+      }
       return acc;
-    }, {} as Record<string, z.ZodString>),
+    }, {} as Record<string, z.ZodTypeAny>),
     photo: z
       .instanceof(File, { message: "Photo is required." })
       .refine((file) => file.size < 1024 * 1024, "Max file size is 1MB.")
@@ -136,6 +140,18 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
         // Don't fail the entire operation if photo deletion fails
       }
 
+      // Update Excel file in storage for this school
+      try {
+        await fetch('/api/update-images-excel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ schoolId: user.schoolId }),
+        });
+        console.log('✅ Excel file updated for school', user.schoolId);
+      } catch (error) {
+        console.warn('⚠️ Failed to update Excel file:', error);
+      }
+
       toast({
         title: "Submission Successful",
         description: "The ID card data and image have been saved.",
@@ -191,9 +207,10 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                 <FormItem>
                   <FormLabel>{field.name}</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={`Enter ${field.name}`} 
-                      value={String(formField.value || '')}
+                    <Input
+                      type={field.id === 'class' || field.id === 'rollNo' ? 'number' : 'text'}
+                      placeholder={`Enter ${field.name}`}
+                      value={formField.value ?? ''}
                       onChange={formField.onChange}
                       onBlur={formField.onBlur}
                       name={formField.name}

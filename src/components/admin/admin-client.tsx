@@ -9,8 +9,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { db, auth, isConfigured, storage } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, query, orderBy } from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function AdminClient() {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ export function AdminClient() {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [isTriggeringEmail, setIsTriggeringEmail] = useState(false);
   const { toast } = useToast();
+  const [loadingAllEmail, setLoadingAllEmail] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -172,6 +175,58 @@ export function AdminClient() {
     }
   };
 
+  // Handler for emailing all images (global)
+  const handleEmailAllImages = async () => {
+    setLoadingAllEmail(true);
+    const toastId = toast({
+      title: 'Processing...',
+      description: 'Image email check is being processed in the background. You will receive an email soon.',
+      duration: 5000,
+    });
+    try {
+      const response = await fetch('/api/trigger-image-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Email Check Started', description: data.message });
+      } else {
+        throw new Error(data.error || 'Failed to trigger email check');
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to trigger image email check.' });
+    } finally {
+      setLoadingAllEmail(false);
+    }
+  };
+
+  // Handler for deleting all images (global)
+  const handleDeleteAllImages = async () => {
+    setDeletingAll(true);
+    try {
+      const res = await fetch('/api/delete-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Deleted', description: `Deleted ${data.deletedCount} images for all schools.` });
+        if (data.errors && data.errors.length > 0) {
+          toast({ title: 'Some errors occurred', description: data.errors.join('\n') });
+        }
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to delete images.' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete images.' });
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -182,22 +237,39 @@ export function AdminClient() {
 
   return (
     <div className="space-y-6">
-      {/* PDF Email Trigger Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleTriggerImageEmail}
-          disabled={isTriggeringEmail}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          {isTriggeringEmail ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Mail className="h-4 w-4" />
-          )}
-          {isTriggeringEmail ? "Checking..." : "Trigger Image Email Check"}
-        </Button>
-      </div>
+      {/* Global Email All Images and Delete All Images buttons */}
+      <TooltipProvider>
+        <div className="flex justify-end gap-2 mb-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={handleEmailAllImages}
+                disabled={loadingAllEmail}
+                aria-label="Email All Images"
+              >
+                {loadingAllEmail ? 'Sending...' : <Mail />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Email All Images</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={handleDeleteAllImages}
+                disabled={deletingAll}
+                aria-label="Delete All Images"
+              >
+                {deletingAll ? 'Deleting...' : <Trash2 />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Delete All Images</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
 
       <SchoolList 
         schools={schools} 

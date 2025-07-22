@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Users, Plus } from "lucide-react";
+import { Pencil, Users, Plus, Mail, Trash2 } from "lucide-react";
 import type { School } from "@/lib/types";
 import { AddSchoolDialog } from "./add-school-dialog";
 
@@ -17,10 +19,89 @@ interface SchoolListProps {
 
 export function SchoolList({ schools, onEditTemplate, onSchoolAdded }: SchoolListProps) {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [loadingSchoolId, setLoadingSchoolId] = useState<string | null>(null);
+    const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null);
+    const [deletingAll, setDeletingAll] = useState(false);
+    const { toast } = useToast();
+
+    const handleTriggerEmail = async (schoolId: string) => {
+        setLoadingSchoolId(schoolId);
+        const toastId = toast({
+            title: 'Processing...',
+            description: 'Image email check is being processed in the background. You will receive an email soon.',
+            duration: 5000,
+        });
+        try {
+            const res = await fetch('/api/trigger-image-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast({ title: 'Email Check Started', description: data.message });
+            } else {
+                toast({ title: 'Error', description: data.error || 'Failed to trigger email.' });
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to trigger email.' });
+        } finally {
+            setLoadingSchoolId(null);
+        }
+    };
+
+    const handleDeleteImages = async (schoolId: string) => {
+        setDeletingSchoolId(schoolId);
+        try {
+            const res = await fetch('/api/delete-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolId }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast({ title: 'Deleted', description: `Deleted ${data.deletedCount} images for this school.` });
+                if (data.errors && data.errors.length > 0) {
+                    toast({ title: 'Some errors occurred', description: data.errors.join('\n') });
+                }
+            } else {
+                toast({ title: 'Error', description: data.error || 'Failed to delete images.' });
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to delete images.' });
+        } finally {
+            setDeletingSchoolId(null);
+        }
+    };
+
+    const handleDeleteAllImages = async () => {
+        setDeletingAll(true);
+        try {
+            const res = await fetch('/api/delete-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast({ title: 'Deleted', description: `Deleted ${data.deletedCount} images for all schools.` });
+                if (data.errors && data.errors.length > 0) {
+                    toast({ title: 'Some errors occurred', description: data.errors.join('\n') });
+                }
+            } else {
+                toast({ title: 'Error', description: data.error || 'Failed to delete images.' });
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to delete images.' });
+        } finally {
+            setDeletingAll(false);
+        }
+    };
 
     return (
         <>
             <Card>
+                {/* Removed Email All Images and Delete All Images buttons from above the table as requested */}
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -64,11 +145,45 @@ export function SchoolList({ schools, onEditTemplate, onSchoolAdded }: SchoolLis
                                             <Badge variant="destructive">Not Configured</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => onEditTemplate(school)}>
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            {school.templateConfig ? "Edit Template" : "Set Template"}
-                                        </Button>
+                                    <TableCell className="text-right flex gap-2 justify-end">
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="outline" size="sm" onClick={() => onEditTemplate(school)} aria-label="Edit Template">
+                                                        <Pencil />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Edit ID Card Template</TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        disabled={loadingSchoolId === school.id}
+                                                        onClick={() => handleTriggerEmail(school.id)}
+                                                        aria-label="Trigger Email Images"
+                                                    >
+                                                        {loadingSchoolId === school.id ? 'Sending...' : <Mail />}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Email All Images for this School</TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        disabled={deletingSchoolId === school.id}
+                                                        onClick={() => handleDeleteImages(school.id)}
+                                                        aria-label="Delete Images"
+                                                    >
+                                                        {deletingSchoolId === school.id ? 'Deleting...' : <Trash2 />}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Delete All Images for this School</TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </TableCell>
                                 </TableRow>
                             ))

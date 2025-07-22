@@ -130,7 +130,7 @@ export function DashboardClient() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="submissions">
-                    <StudentsList />
+                    <StudentsList config={config} />
                 </TabsContent>
             </Tabs>
         ) : (

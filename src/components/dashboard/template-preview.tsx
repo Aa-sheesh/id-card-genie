@@ -163,7 +163,10 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
           )}
           {textPositions.map((field) => {
               const text = previewData?.[field.id] as string;
-              
+              // Find the matching field in config.textFields to get color and fontFamily
+              const configField = config.textFields.find(f => f.id === field.id);
+              const color = configField?.color || '#000000';
+              const fontFamily = configField?.fontFamily || 'Arial, sans-serif';
               return (
                   <div
                   key={field.id}
@@ -173,7 +176,8 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
                       top: `${field.top}%`,
                       fontSize: `${field.fontSize}px`,
                       fontWeight: field.fontWeight,
-                      color: hasData ? '#000000' : 'transparent',
+                      color: hasData ? color : 'transparent',
+                      fontFamily,
                       whiteSpace: 'nowrap',
                       transform: 'translate(0, 0)', // Ensure no additional transforms
                       lineHeight: '1', // Consistent line height

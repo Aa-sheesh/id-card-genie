@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { TemplateConfig } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -27,12 +28,18 @@ interface StudentData {
   [key: string]: unknown;
 }
 
-export function StudentsList() {
+interface StudentsListProps {
+  config: TemplateConfig | null;
+}
+
+export function StudentsList({ config }: StudentsListProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [students, setStudents] = useState<StudentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string | null>(config?.textFields.some(f => f.id === 'class') ? 'class' : null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -147,70 +154,118 @@ export function StudentsList() {
     );
   }
 
+  // Sort students by selected field
+  let sortedStudents = students;
+  if (sortField && (sortField === 'class' || sortField === 'rollNo')) {
+    sortedStudents = [...students].sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+      // If both are numbers, sort numerically
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      // Otherwise, sort as strings
+      aVal = typeof aVal === 'string' ? aVal : (typeof aVal === 'number' ? String(aVal) : '');
+      bVal = typeof bVal === 'string' ? bVal : (typeof bVal === 'number' ? String(bVal) : '');
+      return sortDirection === 'asc'
+        ? aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' })
+        : bVal.localeCompare(aVal, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  } else if (config && config.textFields.some(f => f.id === 'class')) {
+    // Default sort by class desc if present
+    sortedStudents = [...students].sort((a, b) => {
+      const aClassRaw = a['class'];
+      const bClassRaw = b['class'];
+      const aClass = typeof aClassRaw === 'string' ? aClassRaw : (typeof aClassRaw === 'number' ? String(aClassRaw) : '');
+      const bClass = typeof bClassRaw === 'string' ? bClassRaw : (typeof bClassRaw === 'number' ? String(bClassRaw) : '');
+      return bClass.localeCompare(aClass, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  // Handle delete action
+  const handleDelete = async (student: StudentData) => {
+    if (!user?.schoolId || !db) return;
+    try {
+      // Remove Firestore document
+      await (await import('firebase/firestore')).deleteDoc(
+        (await import('firebase/firestore')).doc(db, `schools/${user.schoolId}/students`, student.id)
+      );
+      // Remove image from storage if present
+      if (student.imageUrl && storage) {
+        const storageRef = ref(storage, student.imageUrl);
+        await (await import('firebase/storage')).deleteObject(storageRef);
+      }
+      setStudents(prev => prev.filter(s => s.id !== student.id));
+      toast({ title: 'Deleted', description: 'Student entry deleted.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete entry.' });
+    }
+  };
+
+  // Get dynamic columns from config
+  const dynamicFields = config?.textFields || [];
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="font-headline">Submitted ID Cards</CardTitle>
         <CardDescription>
-          View and download all submitted ID card images.
+          View and manage all submitted ID card data.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {students.length > 0 ? (
+        {sortedStudents.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Roll No</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
+                {dynamicFields.map(field => {
+                  const isSortable = field.id === 'class' || field.id === 'rollNo';
+                  const isSorted = sortField === field.id;
+                  return (
+                    <TableHead
+                      key={field.id}
+                      className={isSortable ? 'cursor-pointer select-none' : ''}
+                      onClick={isSortable ? () => {
+                        if (sortField === field.id) {
+                          setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField(field.id);
+                          setSortDirection('desc');
+                        }
+                      } : undefined}
+                    >
+                      {field.name}
+                      {isSorted && (
+                        <span className="ml-1">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
+                    </TableHead>
+                  );
+                })}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
+              {sortedStudents.map((student) => (
                 <TableRow key={student.id}>
-                  <TableCell className="font-medium">
-                    {student.name || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    {student.rollNo || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={student.source === 'bulk_upload' ? 'default' : 'outline'}>
-                      {student.source === 'bulk_upload' ? 'Bulk Upload' : 'Single Upload'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={student.status === 'submitted' ? 'secondary' : 'outline'}>
-                      {student.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {formatDate(student.submittedAt)}
-                    </div>
-                  </TableCell>
+                  {dynamicFields.map(field => {
+                    let value = student[field.id];
+                    if (typeof value === 'undefined' || value === null) value = 'N/A';
+                    else if (typeof value !== 'string' && typeof value !== 'number') value = String(value);
+                    if (typeof value !== 'string' && typeof value !== 'number') value = 'N/A';
+                    return (
+                      <TableCell key={field.id} className={field.id === 'class' ? 'font-semibold' : ''}>
+                        {value}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {(student.imageUrl || student.imageDownloadUrl) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadImage(student)}
-                          disabled={downloadingPdf === student.id}
-                        >
-                          {downloadingPdf === student.id ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Download className="mr-2 h-4 w-4" />
-                          )}
-                          {downloadingPdf === student.id ? "Downloading..." : "Download Image"}
-                        </Button>
-                      )}
-                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(student)}
+                    >
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

@@ -27,10 +27,10 @@ export const startImageEmailCron = (): void => {
   console.log('Image email cron job started successfully');
 };
 
-// Manual trigger function for testing
-export const triggerImageEmailCheck = async (): Promise<void> => {
+// Manual trigger function for testing (optionally for a specific school)
+export const triggerImageEmailCheck = async (schoolId?: string): Promise<void> => {
   console.log('Manually triggering image email check...');
-  await checkAndSendImages();
+  await checkAndSendImages(schoolId);
 };
 
 // Stop the cron job (useful for cleanup)
