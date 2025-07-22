@@ -2,7 +2,7 @@ import { getAdminServices } from './firebase-admin';
 import ExcelJS from 'exceljs';
 import archiver from 'archiver';
 import stream from 'stream';
-import SibApiV3Sdk from '@sendinblue/client';
+import * as SibApiV3Sdk from '@sendinblue/client';
 
 // Email configuration
 // REMOVE nodemailer and Gmail logic
