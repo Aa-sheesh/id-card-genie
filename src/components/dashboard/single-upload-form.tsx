@@ -40,7 +40,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       if (field.id === 'class' || field.id === 'rollNo') {
         acc[field.id] = z.coerce.number().min(1, { message: `${field.name} is required and must be a number.` });
       } else {
-        acc[field.id] = z.string().min(1, { message: `${field.name} is required.` });
+      acc[field.id] = z.string().min(1, { message: `${field.name} is required.` });
       }
       return acc;
     }, {} as Record<string, z.ZodTypeAny>),
@@ -198,7 +198,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {config.textFields.map((field) => (
+          {config.textFields.filter(field => field.id !== 'photo').map((field) => (
             <FormField
               key={field.id}
               control={form.control}
@@ -210,7 +210,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                     <Input
                       type={field.id === 'class' || field.id === 'rollNo' ? 'number' : 'text'}
                       placeholder={`Enter ${field.name}`}
-                      value={formField.value ?? ''}
+                      value={typeof formField.value === 'string' || typeof formField.value === 'number' ? formField.value : ''}
                       onChange={formField.onChange}
                       onBlur={formField.onBlur}
                       name={formField.name}

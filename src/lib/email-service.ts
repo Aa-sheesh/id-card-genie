@@ -42,7 +42,7 @@ export const getNewImages = async (schoolIdFilter?: string): Promise<ImageData[]
     
     // Query all schools and their students
     const images: ImageData[] = [];
-    let schoolsToProcess: { id: string, data: any }[] = [];
+    let schoolsToProcess: { id: string, data: unknown }[] = [];
     if (schoolIdFilter) {
       // Only process the specified school
       const schoolDoc = await db.collection('schools').doc(schoolIdFilter).get();
@@ -62,7 +62,7 @@ export const getNewImages = async (schoolIdFilter?: string): Promise<ImageData[]
     for (const school of schoolsToProcess) {
       const schoolData = school.data;
       const schoolId = school.id;
-      const schoolName = schoolData.name || 'Unknown School';
+      const schoolName = (schoolData as { name?: string }).name || 'Unknown School';
       console.log(`🔍 Checking students for school: ${schoolName}`);
       const studentsRef = db.collection(`schools/${schoolId}/students`);
       const q = studentsRef
@@ -247,8 +247,8 @@ export const deleteAllImages = async (schoolIdFilter?: string): Promise<{deleted
   const db = adminServices.db;
   const storage = adminServices.storage;
   let deletedCount = 0;
-  let errors: string[] = [];
-  let schoolsToProcess: { id: string, data: any }[] = [];
+  const errors: string[] = [];
+  let schoolsToProcess: { id: string, data: unknown }[] = [];
   if (schoolIdFilter) {
     const schoolDoc = await db.collection('schools').doc(schoolIdFilter).get();
     if (schoolDoc.exists) {

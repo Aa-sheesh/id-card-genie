@@ -168,8 +168,8 @@ export function StudentsList({ config }: StudentsListProps) {
       aVal = typeof aVal === 'string' ? aVal : (typeof aVal === 'number' ? String(aVal) : '');
       bVal = typeof bVal === 'string' ? bVal : (typeof bVal === 'number' ? String(bVal) : '');
       return sortDirection === 'asc'
-        ? aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' })
-        : bVal.localeCompare(aVal, undefined, { numeric: true, sensitivity: 'base' });
+        ? String(aVal).localeCompare(String(bVal), undefined, { numeric: true, sensitivity: 'base' })
+        : String(bVal).localeCompare(String(aVal), undefined, { numeric: true, sensitivity: 'base' });
     });
   } else if (config && config.textFields.some(f => f.id === 'class')) {
     // Default sort by class desc if present
@@ -254,18 +254,18 @@ export function StudentsList({ config }: StudentsListProps) {
                     if (typeof value !== 'string' && typeof value !== 'number') value = 'N/A';
                     return (
                       <TableCell key={field.id} className={field.id === 'class' ? 'font-semibold' : ''}>
-                        {value}
+                        {String(value)}
                       </TableCell>
                     );
                   })}
                   <TableCell className="text-right">
-                    <Button
+                        <Button
                       variant="destructive"
-                      size="sm"
+                          size="sm"
                       onClick={() => handleDelete(student)}
                     >
                       Delete
-                    </Button>
+                        </Button>
                   </TableCell>
                 </TableRow>
               ))}
