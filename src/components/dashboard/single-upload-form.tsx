@@ -234,6 +234,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                 <Input
                   type="file"
                   accept="image/png, image/jpeg"
+                  capture="environment"
                   onChange={(e) => field.onChange(e.target.files?.[0])}
                   onBlur={field.onBlur}
                   name={field.name}
