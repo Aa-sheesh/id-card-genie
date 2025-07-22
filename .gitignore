@@ -40,3 +40,8 @@ next-env.d.ts
 # Firebase
 # IMPORTANT: Never commit your service account keys to a public repository.
 firebase-admin-sdk-credentials.json
+
+# Deployment and sensitive files
+.env.local
+# deployment.txt (removed from ignore)
+firebase-admin-sdk-credentials.json
