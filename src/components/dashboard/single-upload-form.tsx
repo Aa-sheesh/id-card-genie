@@ -24,6 +24,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { generateIDCardJPG } from "@/lib/utils";
 import imageCompression from 'browser-image-compression';
+import { Controller } from "react-hook-form";
 
 interface SingleUploadFormProps {
   config: TemplateConfig;
@@ -32,7 +33,7 @@ interface SingleUploadFormProps {
 
 export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Dynamically generate Zod schema
@@ -225,10 +226,10 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
           ))}
         </div>
 
-        <FormField
+        <Controller
           control={form.control}
           name="photo"
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel>Photo</FormLabel>
               <FormControl>
@@ -239,17 +240,30 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    // Show compressing toast
+                    const compressToastId = toast({
+                      title: 'Compressing image...',
+                      description: 'Please wait while your image is being compressed.',
+                      duration: 10000,
+                    }).id;
                     try {
-                      const compressedFile = await imageCompression(file, {
+                      let compressed = await imageCompression(file, {
                         maxSizeMB: 1,
                         maxWidthOrHeight: 1024,
                         useWebWorker: true,
                       });
-                      field.onChange(compressedFile);
+                      if (!(compressed instanceof File)) {
+                        compressed = new File([compressed], file.name, { type: file.type });
+                      }
+                      field.onChange(compressed);
+                      dismiss(compressToastId);
+                      toast({ title: 'Image compressed!', duration: 2000 });
                     } catch (err) {
-                      // If compression fails, fallback to original file
                       field.onChange(file);
+                      dismiss(compressToastId);
+                      toast({ title: 'Image compression failed, using original.', variant: 'destructive', duration: 4000 });
                     }
+                    e.target.value = '';
                   }}
                   onBlur={field.onBlur}
                   name={field.name}
@@ -257,7 +271,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                 />
               </FormControl>
               <FormDescription>Max 2MB, PNG or JPG format. Images will be compressed automatically.</FormDescription>
-              <FormMessage />
+              <FormMessage>{fieldState.error?.message}</FormMessage>
             </FormItem>
           )}
         />
