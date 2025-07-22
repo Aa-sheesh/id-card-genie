@@ -7,11 +7,7 @@ export async function POST(request: NextRequest) {
     // Only use schoolId if explicitly provided in the request body
     const schoolId = body.schoolId || undefined;
     console.log('🔄 API: Triggering image email check...', schoolId ? `for schoolId: ${schoolId}` : 'for all schools');
-    setTimeout(() => {
-      checkAndSendImages(schoolId).catch((err) => {
-        console.error('❌ Error in background image email check:', err);
-      });
-    }, 0);
+    await checkAndSendImages(schoolId);
     return NextResponse.json({
       success: true,
       message: `Image email check triggered${schoolId ? ' for schoolId: ' + schoolId : ' for all schools'}`
