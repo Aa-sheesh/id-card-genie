@@ -139,61 +139,51 @@ async function uploadBufferToStorage(schoolId: string, fileName: string, buffer:
 
 // Send email with Excel attachment and ZIP link for a school
 export const sendImagesEmail = async (schoolId: string, images: ImageData[]): Promise<boolean> => {
-  console.log('🔍 Starting sendImagesEmail for school:', schoolId);
-  if (images.length === 0) {
-    console.log('No new images to send');
-    return true;
-  }
-  const recipientEmail = process.env.NOTIFICATION_EMAIL;
   const emailUser = process.env.EMAIL_USER;
   const emailPassword = process.env.EMAIL_PASSWORD;
-  console.log('Preparing to send email...');
+  const recipientEmail = process.env.NOTIFICATION_EMAIL;
   if (!recipientEmail || !emailUser || !emailPassword) {
     console.error('❌ Email config missing', { recipientEmail, emailUser, emailPassword });
     return false;
   }
-  console.log('Creating transporter...');
   const transporter = createTransporter();
-  console.log('Transporter created. Generating Excel...');
+
+  // Generate and upload Excel file
   const excelBuffer = await generateSchoolImagesExcel(schoolId);
-  console.log('Excel generated. Uploading Excel...');
-  const excelUrl = await uploadBufferToStorage(schoolId, 'images-list.xlsx', excelBuffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  console.log('Excel uploaded. Generating ZIP...');
-  const { zipBuffer } = await generateSchoolImagesZip(schoolId);
-  console.log('ZIP generated. Uploading ZIP...');
-  const zipUrl = await uploadBufferToStorage(schoolId, 'images.zip', zipBuffer, 'application/zip');
-  console.log('ZIP uploaded. Preparing email content...');
-  // Email content
+  await uploadBufferToStorage(
+    schoolId,
+    'images-list.xlsx',
+    excelBuffer,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+
+  // Compose email with link to Firebase Storage folder
+  const firebaseFolderUrl = `https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools/${schoolId}/images`;
   const htmlContent = `
     <h2>New ID Card Images Generated</h2>
     <p>${images.length} new ID card image(s) have been generated in the last 7 days for this school.</p>
-    <p><a href="${excelUrl}" target="_blank">Download Excel File (images-list.xlsx)</a></p>
+    <p>
+      <a href="${firebaseFolderUrl}" target="_blank">
+        View and Download All Images and Excel (Firebase Console)
+      </a>
+    </p>
     <p>Total Images: ${images.length}</p>
     <hr>
     <p><small>This is an automated email from ID Card Genie system.</small></p>
   `;
+
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: emailUser,
     to: recipientEmail,
     subject: `ID Card Genie - ${images.length} New Image(s) Generated`,
     html: htmlContent,
-    attachments: [
-      {
-        filename: 'images-list.xlsx',
-        content: excelBuffer,
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      },
-      {
-        filename: 'images.zip',
-        content: zipBuffer,
-        contentType: 'application/zip',
-      },
-    ],
+    // No attachments
   };
+
   try {
-    console.log('Sending email with options:', { to: recipientEmail, subject: mailOptions.subject, attachments: mailOptions.attachments.map(a => a.filename) });
+    console.log('Sending email with Firebase folder link...');
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully for school ${schoolId}`);
+    console.log('✅ Email sent successfully for school', schoolId);
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);
