@@ -14,14 +14,24 @@ const brevoApiKey = process.env.BREVO_API_KEY || '';
 brevo.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
 
 export async function sendBrevoEmail({ to, subject, html, attachments }: { to: string, subject: string, html: string, attachments?: Array<{ content: string, name: string }> }) {
-  const emailData = {
-    sender: { name: 'ID Card Genie', email: process.env.SENDER_NOTIFICATION_EMAIL || '' },
-    to: [{ email: to }],
-    subject,
-    htmlContent: html,
-    attachment: attachments,
-  };
-  await brevo.sendTransacEmail(emailData);
+  try {
+    const emailData = {
+      sender: { name: 'ID Card Genie', email: process.env.SENDER_NOTIFICATION_EMAIL || '' },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      attachment: attachments,
+    };
+    console.log('BREVO_API_KEY:', process.env.BREVO_API_KEY ? '[SET]' : '[NOT SET]');
+    console.log('SENDER_NOTIFICATION_EMAIL:', process.env.SENDER_NOTIFICATION_EMAIL);
+    console.log('RECIEVER_NOTIFICATION_EMAIL:', process.env.RECIEVER_NOTIFICATION_EMAIL);
+    console.log('Sending email with:', emailData);
+    await brevo.sendTransacEmail(emailData);
+    console.log('Email sent successfully');
+  } catch (error) {
+    console.error('Error sending email via Brevo:', error);
+    throw error;
+  }
 }
 
 // Interface for image data
@@ -291,7 +301,11 @@ async function uploadGlobalZipToStorage(buffer: Buffer): Promise<string> {
 export const sendImagesEmail = async (schoolId: string | undefined, images: ImageData[]): Promise<boolean> => {
   const recipientEmail = process.env.RECIEVER_NOTIFICATION_EMAIL;
   if (!recipientEmail) {
-    console.error('❌ Email config missing', { recipientEmail });
+    console.error('❌ Email config missing', {
+      BREVO_API_KEY: process.env.BREVO_API_KEY ? '[SET]' : '[NOT SET]',
+      SENDER_NOTIFICATION_EMAIL: process.env.SENDER_NOTIFICATION_EMAIL,
+      RECIEVER_NOTIFICATION_EMAIL: process.env.RECIEVER_NOTIFICATION_EMAIL,
+    });
     return false;
   }
 
