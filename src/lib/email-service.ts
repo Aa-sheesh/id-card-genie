@@ -138,7 +138,7 @@ async function uploadBufferToStorage(schoolId: string, fileName: string, buffer:
 }
 
 // Send email with Excel attachment and ZIP link for a school
-export const sendImagesEmail = async (schoolId: string, images: ImageData[]): Promise<boolean> => {
+export const sendImagesEmail = async (schoolId: string | undefined, images: ImageData[]): Promise<boolean> => {
   const emailUser = process.env.EMAIL_USER;
   const emailPassword = process.env.EMAIL_PASSWORD;
   const recipientEmail = process.env.NOTIFICATION_EMAIL;
@@ -148,26 +148,21 @@ export const sendImagesEmail = async (schoolId: string, images: ImageData[]): Pr
   }
   const transporter = createTransporter();
 
-  // Generate and upload Excel file
-  const excelBuffer = await generateSchoolImagesExcel(schoolId);
-  await uploadBufferToStorage(
-    schoolId,
-    'images-list.xlsx',
-    excelBuffer,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
+  // Minimal processing: do NOT generate or upload Excel for a specific school
+  // Only send the link to the school's images folder or /schools root
 
-  // Compose email with link to Firebase Storage folder
-  const firebaseFolderUrl = `https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools/${schoolId}/images`;
+  const firebaseFolderUrl = schoolId
+    ? `https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools/${schoolId}/images`
+    : 'https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools';
+
   const htmlContent = `
-    <h2>New ID Card Images Generated</h2>
-    <p>${images.length} new ID card image(s) have been generated in the last 7 days for this school.</p>
+    <h2>ID Card Images</h2>
+    <p>Click the link below to view and download all images${schoolId ? ' for this school' : ' for all schools'} in Firebase Storage.</p>
     <p>
       <a href="${firebaseFolderUrl}" target="_blank">
-        View and Download All Images and Excel (Firebase Console)
+        ${firebaseFolderUrl}
       </a>
     </p>
-    <p>Total Images: ${images.length}</p>
     <hr>
     <p><small>This is an automated email from ID Card Genie system.</small></p>
   `;
@@ -175,15 +170,14 @@ export const sendImagesEmail = async (schoolId: string, images: ImageData[]): Pr
   const mailOptions = {
     from: emailUser,
     to: recipientEmail,
-    subject: `ID Card Genie - ${images.length} New Image(s) Generated`,
+    subject: `ID Card Genie - Images Link${schoolId ? '' : ' (All Schools)'}`,
     html: htmlContent,
-    // No attachments
   };
 
   try {
-    console.log('Sending email with Firebase folder link...');
+    console.log('Sending minimal email with Firebase folder link...');
     await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully for school', schoolId);
+    console.log('✅ Email sent successfully', schoolId ? `for school ${schoolId}` : 'for all schools');
     return true;
   } catch (error) {
     console.error('❌ Error sending email:', error);
