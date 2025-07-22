@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { triggerImageEmailCheck } from '@/lib/cron-service';
+import { checkAndSendImages } from '@/lib/email-service';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const schoolId = body.schoolId;
+    // Only use schoolId if explicitly provided in the request body
+    const schoolId = body.schoolId || undefined;
     console.log('🔄 API: Triggering image email check...', schoolId ? `for schoolId: ${schoolId}` : 'for all schools');
-    // Option 1: Await (synchronous, blocks UI)
-    // await triggerImageEmailCheck(schoolId);
-    // Option 2: setTimeout (non-blocking, but not a real queue)
     setTimeout(() => {
-      triggerImageEmailCheck(schoolId).catch((err) => {
+      checkAndSendImages(schoolId).catch((err) => {
         console.error('❌ Error in background image email check:', err);
       });
     }, 0);
     return NextResponse.json({
       success: true,
-      message: `Image email check triggered${schoolId ? ' for schoolId: ' + schoolId : ''}`
+      message: `Image email check triggered${schoolId ? ' for schoolId: ' + schoolId : ' for all schools'}`
     });
   } catch (error) {
     console.error('❌ API: Error triggering image email check:', error);

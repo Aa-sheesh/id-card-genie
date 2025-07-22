@@ -23,6 +23,7 @@ import { db, storage } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { generateIDCardJPG } from "@/lib/utils";
+import imageCompression from 'browser-image-compression';
 
 interface SingleUploadFormProps {
   config: TemplateConfig;
@@ -46,7 +47,7 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
     }, {} as Record<string, z.ZodTypeAny>),
     photo: z
       .instanceof(File, { message: "Photo is required." })
-      .refine((file) => file.size < 1024 * 1024, "Max file size is 1MB.")
+      .refine((file) => file.size < 2 * 1024 * 1024, "Max file size is 2MB.")
       .refine(
         (file) => ["image/jpeg", "image/png"].includes(file.type),
         "Only .jpg and .png formats are supported."
@@ -235,13 +236,27 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
                   type="file"
                   accept="image/png, image/jpeg"
                   capture="environment"
-                  onChange={(e) => field.onChange(e.target.files?.[0])}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const compressedFile = await imageCompression(file, {
+                        maxSizeMB: 1,
+                        maxWidthOrHeight: 1024,
+                        useWebWorker: true,
+                      });
+                      field.onChange(compressedFile);
+                    } catch (err) {
+                      // If compression fails, fallback to original file
+                      field.onChange(file);
+                    }
+                  }}
                   onBlur={field.onBlur}
                   name={field.name}
                   ref={field.ref}
                 />
               </FormControl>
-              <FormDescription>Max 1MB, PNG or JPG format.</FormDescription>
+              <FormDescription>Max 2MB, PNG or JPG format. Images will be compressed automatically.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
