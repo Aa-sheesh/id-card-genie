@@ -73,6 +73,7 @@ export const PROFESSIONAL_COLORS = {
   DARK_BROWN: { value: "#78350f", label: "Dark Brown" },
   CHARCOAL: { value: "#374151", label: "Charcoal" },
   DARK_SLATE: { value: "#475569", label: "Dark Slate" },
+  WHITE: { value: "#FFFFFF", label: "White" }, // Added white
 } as const;
 
 export type ProfessionalColor = keyof typeof PROFESSIONAL_COLORS;
