@@ -190,6 +190,10 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
             const textAlign = configField?.textAlign || 'left';
             const isAddress = field.id === 'address';
 
+            let transform = 'translate(0, 0)';
+            if (textAlign === 'center') transform = 'translate(-50%, 0)';
+            else if (textAlign === 'right') transform = 'translate(-100%, 0)';
+
             return (
               <div
                 key={field.id}
@@ -204,9 +208,9 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
                   whiteSpace: isAddress ? 'pre' : 'pre',
                   textAlign,
                   lineHeight: '1.2',
-                  transform: textAlign === 'center' ? 'translate(-50%, 0)' : 'translate(0, 0)',
-                  width: textAlign === 'center' ? 'auto' : 'fit-content',
-                  maxWidth: textAlign === 'center' ? '80%' : 'none',
+                  transform,
+                  width: 'max-content',
+                  maxWidth: '80%',
                 }}
               >
                 {text}
