@@ -163,7 +163,15 @@ export async function generateSchoolImagesZip(schoolId: string): Promise<{ zipBu
   console.log(`[ZIP] Fetching files for school: ${schoolId}`);
   const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
   console.log(`[ZIP] Found ${files.length} files in storage`);
-  const imageFiles = files.filter(f => !f.name.endsWith('.xlsx') && !f.name.endsWith('.zip'));
+  
+  // Use the same filtering logic as Excel generation
+  const imageFiles = files.filter(f => {
+    const fileName = f.name.toLowerCase();
+    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
+    const isExcluded = fileName.endsWith('.xlsx') || fileName.endsWith('.zip');
+    return !isExcluded && isImage;
+  });
+  
   console.log(`[ZIP] ${imageFiles.length} image files to process`);
 
   const archive = archiver('zip', { zlib: { level: 9 } });
@@ -451,11 +459,20 @@ export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffe
     const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
     console.log(`[EXCEL] Found ${files.length} total files in storage`);
     
+    // Debug: Log all files found
+    files.forEach((file, idx) => {
+      console.log(`[EXCEL] File ${idx + 1}: ${file.name}`);
+    });
+    
     // Filter out Excel and ZIP files, keep only image files
     const imageFiles = files.filter(f => {
       const fileName = f.name.toLowerCase();
-      return !fileName.endsWith('.xlsx') && !fileName.endsWith('.zip') && 
-             (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png'));
+      const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png');
+      const isExcluded = fileName.endsWith('.xlsx') || fileName.endsWith('.zip');
+      
+      console.log(`[EXCEL] Checking file: ${f.name} - isImage: ${isImage}, isExcluded: ${isExcluded}`);
+      
+      return !isExcluded && isImage;
     });
     
     console.log(`[EXCEL] ${imageFiles.length} image files to include in Excel`);
@@ -478,6 +495,15 @@ export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffe
       });
       console.log(`[EXCEL] Added row ${idx + 1}: ${fileName}`);
     });
+    
+    // If no images found, add a note row
+    if (imageFiles.length === 0) {
+      worksheet.addRow({ 
+        sno: 1, 
+        image: 'No images found for this school' 
+      });
+      console.log(`[EXCEL] No images found, added placeholder row`);
+    }
     
     const buffer = await workbook.xlsx.writeBuffer();
     console.log(`[EXCEL] Excel file generated successfully (${buffer.byteLength} bytes)`);
