@@ -7,6 +7,7 @@ export interface TemplateField {
   fontWeight: "normal" | "bold";
   color: string;
   fontFamily: string;
+  textAlign: "left" | "center" | "right";
 }
 
 export interface PhotoPlacement {

@@ -40,6 +40,7 @@ export function calculateDefaultPositions(width: number, height: number) {
       fontWeight: "bold" as const,
       color: "#000000",
       fontFamily: "Arial, sans-serif",
+      textAlign: "left" as const,
     },
     {
       id: "rollNo",
@@ -50,6 +51,7 @@ export function calculateDefaultPositions(width: number, height: number) {
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      textAlign: "left" as const,
     },
     {
       id: "class",
@@ -60,6 +62,7 @@ export function calculateDefaultPositions(width: number, height: number) {
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      textAlign: "left" as const,
     },
     {
       id: "contact",
@@ -70,6 +73,7 @@ export function calculateDefaultPositions(width: number, height: number) {
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      textAlign: "left" as const,
     },
     {
       id: "address",
@@ -80,6 +84,7 @@ export function calculateDefaultPositions(width: number, height: number) {
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      textAlign: "left" as const,
     },
   ];
 
@@ -191,11 +196,11 @@ export function testCoordinateCalculations() {
     templateDimensions: { width: 856, height: 540 },
     photoPlacement: { x: 40, y: 135, width: 150, height: 162 },
     textFields: [
-      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif" },
-      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" }
+      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif", textAlign: "left" },
+      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" }
     ],
   };
 
@@ -532,25 +537,32 @@ function addTextFieldsToCanvas(
   textPositions.forEach(field => {
     const text = data[field.id]?.toString() || '';
     if (text) {
-      // Find the corresponding text field config to get color and font family
+      // Find the corresponding text field config to get color, font family, and textAlign
       const textFieldConfig = config.textFields.find(f => f.id === field.id);
-      
-      // Set font style with custom font family and weight
       const fontFamily = textFieldConfig?.fontFamily || 'Arial, sans-serif';
       const fontWeight = field.fontWeight === 'bold' ? 'bold' : 'normal';
       ctx.font = `${fontWeight} ${field.fontSize}px ${fontFamily}`;
-      
-      // Set text color from config
       ctx.fillStyle = textFieldConfig?.color || '#000000';
-      ctx.textBaseline = 'top'; // Same baseline as preview
+      ctx.textBaseline = 'top';
+      ctx.textAlign = textFieldConfig?.textAlign || 'left';
       
       // Calculate position using percentages (same as preview)
-      const x = (field.left / 100) * width;
+      let x = (field.left / 100) * width;
       const y = (field.top / 100) * height;
       
-      // Draw text with exact positioning
-      ctx.fillText(text, x, y);
+      // For center alignment, the x coordinate should be the center point
+      // For left alignment, x is the left edge
+      // For right alignment, x is the right edge
+      if (textFieldConfig?.textAlign === 'center') {
+        // x is already the center point, no adjustment needed
+      } else if (textFieldConfig?.textAlign === 'right') {
+        // For right alignment, we need to adjust since ctx.textAlign = 'right' means x is the right edge
+        // But our field.left represents the left edge, so we need to calculate the right edge
+        const textWidth = ctx.measureText(text).width;
+        x = x + textWidth;
+      }
       
+      ctx.fillText(text, x, y);
       console.log("📝 JPG Text placement:", {
         id: field.id,
         text: text.substring(0, 20) + (text.length > 20 ? '...' : ''),
@@ -559,7 +571,8 @@ function addTextFieldsToCanvas(
         fontSize: field.fontSize,
         fontWeight: field.fontWeight,
         color: textFieldConfig?.color,
-        fontFamily: textFieldConfig?.fontFamily
+        fontFamily: textFieldConfig?.fontFamily,
+        textAlign: textFieldConfig?.textAlign || 'left',
       });
     }
   });

@@ -50,6 +50,7 @@ const formSchema = z.object({
     fontWeight: z.enum(["normal", "bold"]),
     color: z.string().min(1, "Color is required."),
     fontFamily: z.string().min(1, "Font family is required."),
+    textAlign: z.enum(["left", "center", "right"]),
   })).min(1, "At least one text field is required."),
 });
 
@@ -89,11 +90,11 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
       templateDimensions: { width: 856, height: 540 },
       photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
       textFields: [
-        { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
-        { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+        { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif", textAlign: "left" },
+        { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+        { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+        { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+        { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" }
       ],
     }
   });
@@ -122,11 +123,11 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
           templateDimensions: { width: defaultDimensions.width, height: defaultDimensions.height },
           photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
           textFields: [
-            { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
-            { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+            { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif", textAlign: "left" },
+            { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+            { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+            { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
+            { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" }
           ],
         });
 
@@ -189,7 +190,8 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
             left: `${(field.x / templateWidth) * 100}%`,
             top: `${(field.y / templateHeight) * 100}%`,
             fontSize: field.fontSize,
-            fontWeight: field.fontWeight
+            fontWeight: field.fontWeight,
+            textAlign: field.textAlign
           }))
         }
       });
@@ -327,6 +329,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                           fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
                           color: watchedValues.textFields?.[index]?.color || '#000000',
                           fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
+                          textAlign: watchedValues.textFields?.[index]?.textAlign || 'left',
                           whiteSpace: 'nowrap',
                           transform: 'translate(0, 0)', // Ensure no additional transforms
                           lineHeight: '1', // Consistent line height
@@ -484,6 +487,25 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                       />
                     </div>
                     
+                    {/* Text Align */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <FormField control={form.control} name={`textFields.${index}.textAlign`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Text Align</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select align" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="left">Left</SelectItem>
+                              <SelectItem value="center">Center</SelectItem>
+                              <SelectItem value="right">Right</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                    </div>
+                    
                     {/* Live Font Preview */}
                     <div className="mt-3 p-3 bg-muted/50 rounded-md border">
                       <FormLabel className="text-sm font-medium mb-2 block">Font Preview</FormLabel>
@@ -494,6 +516,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                           fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
                           fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
                           color: watchedValues.textFields?.[index]?.color || '#000000',
+                          textAlign: watchedValues.textFields?.[index]?.textAlign || 'left',
                           lineHeight: '1.2',
                           minHeight: '2em',
                           display: 'flex',
@@ -517,7 +540,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                   <p className="text-sm font-medium text-destructive">{form.formState.errors.textFields.root.message}</p>
                 )}
               </div>
-                              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" })}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Field
               </Button>
             </div>

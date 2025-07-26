@@ -15,6 +15,27 @@ interface TemplatePreviewProps {
   previewData?: PreviewData | null;
 }
 
+// Import or define getSampleText
+function getSampleText(fieldId: string): string {
+  const sampleTexts: Record<string, string> = {
+    name: "John Doe",
+    rollNo: "2024001",
+    class: "Class 10",
+    contact: "+91 98765 43210",
+    address: "123 Main Street, City",
+    fatherName: "Father's Name",
+    motherName: "Mother's Name",
+    dob: "01/01/2000",
+    bloodGroup: "O+",
+    section: "A",
+    admissionNo: "ADM001",
+    email: "student@school.com",
+    emergencyContact: "Emergency Contact",
+    default: "Sample Text"
+  };
+  return sampleTexts[fieldId] || sampleTexts.default;
+}
+
 export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [templateUrl, setTemplateUrl] = useState<string | null>(null);
@@ -162,34 +183,35 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
               </div>
           )}
           {textPositions.map((field) => {
-              const text = previewData?.[field.id] as string;
-              // Find the matching field in config.textFields to get color and fontFamily
-              const configField = config.textFields.find(f => f.id === field.id);
-              const color = configField?.color || '#000000';
-              const fontFamily = configField?.fontFamily || 'Arial, sans-serif';
-              return (
-                  <div
-                  key={field.id}
-                  className="absolute"
-                  style={{
-                      left: `${field.left}%`,
-                      top: `${field.top}%`,
-                      fontSize: `${field.fontSize}px`,
-                      fontWeight: field.fontWeight,
-                      color: hasData ? color : 'transparent',
-                      fontFamily,
-                      whiteSpace: 'nowrap',
-                      transform: 'translate(0, 0)', // Ensure no additional transforms
-                      lineHeight: '1', // Consistent line height
-                  }}
-                  >
-                  {text || (
-                       <div className="border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm">
-                          {field.name}
-                      </div>
-                  )}
-                  </div>
-              );
+            const text = (previewData?.[field.id] as string) || getSampleText(field.id);
+            const configField = config.textFields.find(f => f.id === field.id);
+            const color = configField?.color || '#000000';
+            const fontFamily = configField?.fontFamily || 'Arial, sans-serif';
+            const textAlign = configField?.textAlign || 'left';
+            const isAddress = field.id === 'address';
+
+            return (
+              <div
+                key={field.id}
+                className="absolute"
+                style={{
+                  left: `${field.left}%`,
+                  top: `${field.top}%`,
+                  fontSize: `${field.fontSize}px`,
+                  fontWeight: field.fontWeight,
+                  color,
+                  fontFamily,
+                  whiteSpace: isAddress ? 'pre' : 'pre',
+                  textAlign,
+                  lineHeight: '1.2',
+                  transform: textAlign === 'center' ? 'translate(-50%, 0)' : 'translate(0, 0)',
+                  width: textAlign === 'center' ? 'auto' : 'fit-content',
+                  maxWidth: textAlign === 'center' ? '80%' : 'none',
+                }}
+              >
+                {text}
+              </div>
+            );
           })}
         </div>
     </div>
