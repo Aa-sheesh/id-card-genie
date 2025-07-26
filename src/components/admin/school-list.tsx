@@ -28,7 +28,7 @@ export function SchoolList({ schools, onEditTemplate, onSchoolAdded }: SchoolLis
         setLoadingSchoolId(schoolId);
         const toastId = toast({
             title: 'Processing...',
-            description: 'Image email check is being processed in the background. You will receive an email soon.',
+            description: 'Generating Excel file and ZIP archive for this school. For large schools, you will receive Firebase Storage access links.',
             duration: 5000,
         });
         try {
@@ -39,12 +39,20 @@ export function SchoolList({ schools, onEditTemplate, onSchoolAdded }: SchoolLis
             });
             const data = await res.json();
             if (data.success) {
-                toast({ title: 'Email Check Started', description: data.message });
+                toast({ title: 'Excel & ZIP Generation Started', description: data.message });
             } else {
-                toast({ title: 'Error', description: data.error || 'Failed to trigger email.' });
+                if (data.error?.includes('timed out')) {
+                    toast({ 
+                        variant: 'destructive', 
+                        title: 'Timeout Error', 
+                        description: 'Too many files to process. The ZIP generation took too long.' 
+                    });
+                } else {
+                    toast({ title: 'Error', description: data.error || 'Failed to generate Excel & ZIP files.' });
+                }
             }
         } catch (error) {
-            toast({ title: 'Error', description: 'Failed to trigger email.' });
+            toast({ title: 'Error', description: 'Failed to generate Excel & ZIP files.' });
         } finally {
             setLoadingSchoolId(null);
         }
@@ -167,7 +175,7 @@ export function SchoolList({ schools, onEditTemplate, onSchoolAdded }: SchoolLis
                                                         {loadingSchoolId === school.id ? 'Sending...' : <Mail />}
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent>Email All Images for this School</TooltipContent>
+                                                <TooltipContent>Generate Excel & ZIP for this School (Scalable)</TooltipContent>
                                             </Tooltip>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>

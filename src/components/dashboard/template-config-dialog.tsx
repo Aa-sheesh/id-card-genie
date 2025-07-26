@@ -46,10 +46,13 @@ const formSchema = z.object({
     name: z.string().min(1, "Field name is required."),
     x: z.coerce.number().min(0),
     y: z.coerce.number().min(0),
+    width: z.coerce.number().min(1).optional(),
+    lines: z.coerce.number().min(0.1).default(1), // Allow decimal lines >= 0.1
     fontSize: z.coerce.number().min(1),
     fontWeight: z.enum(["normal", "bold"]),
     color: z.string().min(1, "Color is required."),
     fontFamily: z.string().min(1, "Font family is required."),
+    textAlign: z.enum(["left", "center", "right"]).default("left"),
   })).min(1, "At least one text field is required."),
 });
 
@@ -89,11 +92,11 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
       templateDimensions: { width: 856, height: 540 },
       photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
       textFields: [
-        { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
-        { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-        { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+        { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+        { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+        { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+        { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+        { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" }
       ],
     }
   });
@@ -122,11 +125,11 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
           templateDimensions: { width: defaultDimensions.width, height: defaultDimensions.height },
           photoPlacement: { x: 68, y: 135, width: 171, height: 162 }, // Updated to match new calculation
           textFields: [
-            { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif" },
-            { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" },
-            { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif" }
+            { id: "name", name: "Full Name", x: 274, y: 162, fontSize: 18, fontWeight: "bold" as const, color: "#000000", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+            { id: "rollNo", name: "Roll No", x: 274, y: 216, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+            { id: "class", name: "Class", x: 274, y: 270, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+            { id: "contact", name: "Contact", x: 274, y: 324, fontSize: 16, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" },
+            { id: "address", name: "Address", x: 274, y: 378, fontSize: 14, fontWeight: "normal" as const, color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" }
           ],
         });
 
@@ -189,7 +192,8 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
             left: `${(field.x / templateWidth) * 100}%`,
             top: `${(field.y / templateHeight) * 100}%`,
             fontSize: field.fontSize,
-            fontWeight: field.fontWeight
+            fontWeight: field.fontWeight,
+            textAlign: field.textAlign
           }))
         }
       });
@@ -316,25 +320,51 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                       </div>
                     )}
                     
-                    {textPositions.map((field, index) => (
-                      <div
-                        key={index}
-                        className="absolute border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm"
-                        style={{
-                          left: `${field.left}%`,
-                          top: `${field.top}%`,
-                          fontSize: `${watchedValues.textFields?.[index]?.fontSize || 12}px`,
-                          fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
-                          color: watchedValues.textFields?.[index]?.color || '#000000',
-                          fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
-                          whiteSpace: 'nowrap',
-                          transform: 'translate(0, 0)', // Ensure no additional transforms
-                          lineHeight: '1', // Consistent line height
-                        }}
-                      >
-                        {getSampleText(watchedValues.textFields?.[index]?.id || 'name')}
-                      </div>
-                    ))}
+                    {textPositions.map((field, index) => {
+                      const widthPx = watchedValues.textFields?.[index]?.width;
+                      const fontSize = watchedValues.textFields?.[index]?.fontSize || 12;
+                      const lines = watchedValues.textFields?.[index]?.lines || 1;
+                      const textAlign = watchedValues.textFields?.[index]?.textAlign || "left";
+                      const templateW = currentDimensions?.width || 856;
+                      const templateH = currentDimensions?.height || 540;
+                      const widthPercent = widthPx ? (widthPx / templateW) * 100 : undefined;
+                      const heightPx = fontSize * 1.2 * lines;
+                      return (
+                        <div
+                          key={index}
+                          className="absolute border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm"
+                          style={{
+                            left: `${field.left}%`,
+                            top: `${field.top}%`,
+                            width: widthPercent ? `${widthPercent}%` : undefined,
+                            height: `${heightPx}px`,
+                            fontSize: `${fontSize}px`,
+                            fontWeight: watchedValues.textFields?.[index]?.fontWeight || 'normal',
+                            color: watchedValues.textFields?.[index]?.color || '#000000',
+                            fontFamily: watchedValues.textFields?.[index]?.fontFamily || 'Arial, sans-serif',
+                            whiteSpace: widthPercent ? 'pre-wrap' : 'nowrap',
+                            overflow: widthPercent ? 'hidden' : undefined,
+                            lineHeight: '1.2',
+                            display: 'block',
+                            alignItems: 'flex-start',
+                            justifyContent: 'flex-start',
+                            background: 'rgba(255,255,255,0.7)',
+                            textAlign: textAlign,
+                            wordWrap: widthPercent ? 'break-word' : 'normal',
+                          }}
+                        >
+                          <span style={{
+                            textAlign: textAlign, 
+                            width: '100%', 
+                            display: 'inline-block',
+                            whiteSpace: widthPercent ? 'pre-wrap' : 'nowrap',
+                            wordWrap: widthPercent ? 'break-word' : 'normal',
+                          }}>
+                            {getSampleText(watchedValues.textFields?.[index]?.id || 'name')}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="aspect-[85.6/54] w-full flex items-center justify-center bg-muted/50">
@@ -387,6 +417,33 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                     <div className="grid grid-cols-2 gap-2">
                       <FormField control={form.control} name={`textFields.${index}.x`} render={({ field }) => (<FormItem><FormLabel>X</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
                       <FormField control={form.control} name={`textFields.${index}.y`} render={({ field }) => (<FormItem><FormLabel>Y</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
+                      <FormField control={form.control} name={`textFields.${index}.width`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Width (px)</FormLabel>
+                          <FormControl><Input type="number" min="1" {...field} value={field.value ?? ""} /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`textFields.${index}.textAlign`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Text Align</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || "left"}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select alignment" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="left">Left</SelectItem>
+                              <SelectItem value="center">Center</SelectItem>
+                              <SelectItem value="right">Right</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={`textFields.${index}.lines`} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Number of lines</FormLabel>
+                          <FormControl><Input type="number" min="0.1" step="0.1" {...field} value={field.value ?? 1} /></FormControl>
+                        </FormItem>
+                      )} />
                       <FormField control={form.control} name={`textFields.${index}.fontSize`} render={({ field }) => (
                         <FormItem>
                           <FormLabel>Font Size (px)</FormLabel>
@@ -519,7 +576,7 @@ export function TemplateConfigDialog({ isOpen, setIsOpen, onSave, school, isSavi
                   <p className="text-sm font-medium text-destructive">{form.formState.errors.textFields.root.message}</p>
                 )}
               </div>
-                              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" })}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: ``, name: "", x: 170, y: 180, fontSize: 12, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", lines: 1, textAlign: "left" })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Field
               </Button>
             </div>

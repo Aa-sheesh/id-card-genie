@@ -34,56 +34,61 @@ export function calculateDefaultPositions(width: number, height: number) {
     {
       id: "name",
       name: "Full Name",
-      x: Math.round(width * 0.32), // 32% from left - positioned to the right of photo
-      y: Math.round(height * 0.30), // 30% from top
-      fontSize: Math.round(Math.max(18, width * 0.021)), // Slightly larger font for name
+      x: Math.round(width * 0.32),
+      y: Math.round(height * 0.30),
+      fontSize: Math.round(Math.max(18, width * 0.021)),
       fontWeight: "bold" as const,
       color: "#000000",
       fontFamily: "Arial, sans-serif",
+      lines: 1,
       textAlign: "left" as const,
     },
     {
       id: "rollNo",
       name: "Roll No",
-      x: Math.round(width * 0.32), // 32% from left
-      y: Math.round(height * 0.40), // 40% from top
-      fontSize: Math.round(Math.max(14, width * 0.018)), // Medium font
+      x: Math.round(width * 0.32),
+      y: Math.round(height * 0.40),
+      fontSize: Math.round(Math.max(14, width * 0.018)),
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      lines: 1,
       textAlign: "left" as const,
     },
     {
       id: "class",
       name: "Class",
-      x: Math.round(width * 0.32), // 32% from left
-      y: Math.round(height * 0.50), // 50% from top
-      fontSize: Math.round(Math.max(14, width * 0.018)), // Medium font
+      x: Math.round(width * 0.32),
+      y: Math.round(height * 0.50),
+      fontSize: Math.round(Math.max(14, width * 0.018)),
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      lines: 1,
       textAlign: "left" as const,
     },
     {
       id: "contact",
       name: "Contact",
-      x: Math.round(width * 0.32), // 32% from left
-      y: Math.round(height * 0.60), // 60% from top
-      fontSize: Math.round(Math.max(14, width * 0.018)), // Medium font
+      x: Math.round(width * 0.32),
+      y: Math.round(height * 0.60),
+      fontSize: Math.round(Math.max(14, width * 0.018)),
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      lines: 1,
       textAlign: "left" as const,
     },
     {
       id: "address",
       name: "Address",
-      x: Math.round(width * 0.32), // 32% from left
-      y: Math.round(height * 0.70), // 70% from top
-      fontSize: Math.round(Math.max(12, width * 0.016)), // Smaller font for address
+      x: Math.round(width * 0.32),
+      y: Math.round(height * 0.70),
+      fontSize: Math.round(Math.max(12, width * 0.016)),
       fontWeight: "normal" as const,
       color: "#333333",
       fontFamily: "Arial, sans-serif",
+      lines: 1,
       textAlign: "left" as const,
     },
   ];
@@ -196,11 +201,11 @@ export function testCoordinateCalculations() {
     templateDimensions: { width: 856, height: 540 },
     photoPlacement: { x: 40, y: 135, width: 150, height: 162 },
     textFields: [
-      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif" },
-      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
-      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" }
+      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif", lines: 1 },
+      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", lines: 1 },
+      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", lines: 1 },
+      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", lines: 1 },
+      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", lines: 1 }
     ],
   };
 
@@ -537,24 +542,77 @@ function addTextFieldsToCanvas(
   textPositions.forEach(field => {
     const text = data[field.id]?.toString() || '';
     if (text) {
-      // Find the corresponding text field config to get color and font family
+      // Find the corresponding text field config to get color, font family, width, height
       const textFieldConfig = config.textFields.find(f => f.id === field.id);
-      
-      // Set font style with custom font family and weight
       const fontFamily = textFieldConfig?.fontFamily || 'Arial, sans-serif';
       const fontWeight = field.fontWeight === 'bold' ? 'bold' : 'normal';
       ctx.font = `${fontWeight} ${field.fontSize}px ${fontFamily}`;
-      
-      // Set text color from config
       ctx.fillStyle = textFieldConfig?.color || '#000000';
-      ctx.textBaseline = 'top'; // Same baseline as preview
-      
+      ctx.textBaseline = 'top';
+      // Set textAlign for canvas
+      ctx.textAlign = textFieldConfig?.textAlign || 'left';
       // Calculate position using percentages (same as preview)
       const x = (field.left / 100) * width;
       const y = (field.top / 100) * height;
+      const boxWidth = textFieldConfig?.width ? textFieldConfig.width : undefined;
+      const boxLines = textFieldConfig?.lines || 1;
+      const boxHeight = boxLines * field.fontSize * 1.2;
       
-      // Draw text with exact positioning
-      ctx.fillText(text, x, y);
+      if (boxWidth) {
+        // Handle multi-line text with both manual line breaks and word wrapping
+        const lines = text.split('\n'); // Split by manual line breaks first
+        let drawY = y;
+        const lineHeight = field.fontSize * 1.2;
+        
+        for (let lineIndex = 0; lineIndex < lines.length && drawY - y + lineHeight <= boxHeight; lineIndex++) {
+          const line = lines[lineIndex];
+          if (line.trim() === '') {
+            // Empty line, just move to next line
+            drawY += lineHeight;
+            continue;
+          }
+          
+          // Word wrap within this line
+          const words = line.split(' ');
+          let currentLine = '';
+          
+          for (let wordIndex = 0; wordIndex < words.length; wordIndex++) {
+            const testLine = currentLine + (currentLine ? ' ' : '') + words[wordIndex];
+            const metrics = ctx.measureText(testLine);
+            
+            if (metrics.width > boxWidth && currentLine) {
+              // Draw current line and start new line
+              let drawX = x;
+              if (ctx.textAlign === 'center') drawX = x + boxWidth / 2;
+              if (ctx.textAlign === 'right') drawX = x + boxWidth;
+              ctx.fillText(currentLine, drawX, drawY, boxWidth);
+              
+              drawY += lineHeight;
+              if (drawY - y + lineHeight > boxHeight) break; // Stop if exceeds box height
+              
+              currentLine = words[wordIndex];
+            } else {
+              currentLine = testLine;
+            }
+          }
+          
+          // Draw the last line of this paragraph
+          if (currentLine && drawY - y + lineHeight <= boxHeight) {
+            let drawX = x;
+            if (ctx.textAlign === 'center') drawX = x + boxWidth / 2;
+            if (ctx.textAlign === 'right') drawX = x + boxWidth;
+            ctx.fillText(currentLine, drawX, drawY, boxWidth);
+            drawY += lineHeight;
+          }
+        }
+      } else {
+        // Single-line, no wrapping - just use first line if there are line breaks
+        const firstLine = text.split('\n')[0];
+        let drawX = x;
+        if (ctx.textAlign === 'center') drawX = x + (boxWidth || 0) / 2;
+        if (ctx.textAlign === 'right') drawX = x + (boxWidth || 0);
+        ctx.fillText(firstLine, drawX, y);
+      }
       
       console.log("📝 JPG Text placement:", {
         id: field.id,
@@ -564,7 +622,10 @@ function addTextFieldsToCanvas(
         fontSize: field.fontSize,
         fontWeight: field.fontWeight,
         color: textFieldConfig?.color,
-        fontFamily: textFieldConfig?.fontFamily
+        fontFamily: textFieldConfig?.fontFamily,
+        width: boxWidth,
+        height: boxHeight,
+        textAlign: textFieldConfig?.textAlign
       });
     }
   });

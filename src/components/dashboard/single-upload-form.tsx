@@ -14,6 +14,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { type TemplateConfig, type PreviewData } from "@/lib/types";
 import { useState, useEffect } from "react";
@@ -142,18 +143,6 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
         // Don't fail the entire operation if photo deletion fails
       }
 
-      // Update Excel file in storage for this school
-      try {
-        await fetch('/api/update-images-excel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ schoolId: user.schoolId }),
-        });
-        console.log('✅ Excel file updated for school', user.schoolId);
-      } catch (error) {
-        console.warn('⚠️ Failed to update Excel file:', error);
-      }
-
       toast({
         title: "Submission Successful",
         description: "The ID card data and image have been saved.",
@@ -200,30 +189,52 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {config.textFields.filter(field => field.id !== 'photo').map((field) => (
-            <FormField
-              key={field.id}
-              control={form.control}
-              name={field.id as keyof z.infer<typeof formSchema>}
-              render={({ field: formField }) => (
-                <FormItem>
-                  <FormLabel>{field.name}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type={field.id === 'class' || field.id === 'rollNo' ? 'number' : 'text'}
-                      placeholder={`Enter ${field.name}`}
-                      value={typeof formField.value === 'string' || typeof formField.value === 'number' ? formField.value : ''}
-                      onChange={formField.onChange}
-                      onBlur={formField.onBlur}
-                      name={formField.name}
-                      ref={formField.ref}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ))}
+          {config.textFields.filter(field => field.id !== 'photo').map((field) => {
+            const shouldUseTextarea = field.lines && field.lines > 1;
+            return (
+              <FormField
+                key={field.id}
+                control={form.control}
+                name={field.id as keyof z.infer<typeof formSchema>}
+                render={({ field: formField }) => (
+                  <FormItem>
+                    <FormLabel>{field.name}</FormLabel>
+                    <FormControl>
+                      {shouldUseTextarea ? (
+                        <Textarea
+                          placeholder={`Enter ${field.name}`}
+                          value={typeof formField.value === 'string' ? formField.value : ''}
+                          onChange={formField.onChange}
+                          onBlur={formField.onBlur}
+                          name={formField.name}
+                          ref={formField.ref}
+                          rows={Math.ceil(field.lines || 1)}
+                          className="resize-none"
+                          style={{
+                            wordWrap: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.2',
+                            minHeight: `${(field.lines || 1) * 1.2 * 16}px`, // 16px base font size
+                          }}
+                        />
+                      ) : (
+                        <Input
+                          type={field.id === 'class' || field.id === 'rollNo' ? 'number' : 'text'}
+                          placeholder={`Enter ${field.name}`}
+                          value={typeof formField.value === 'string' || typeof formField.value === 'number' ? formField.value : ''}
+                          onChange={formField.onChange}
+                          onBlur={formField.onBlur}
+                          name={formField.name}
+                          ref={formField.ref}
+                        />
+                      )}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            );
+          })}
         </div>
 
         <Controller

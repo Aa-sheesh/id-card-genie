@@ -3,10 +3,13 @@ export interface TemplateField {
   name: string;
   x: number;
   y: number;
+  width?: number; // width in px (optional, for text box)
+  lines?: number; // number of lines to show (default 1)
   fontSize: number;
   fontWeight: "normal" | "bold";
   color: string;
   fontFamily: string;
+  textAlign?: "left" | "center" | "right"; // Add textAlign
 }
 
 export interface PhotoPlacement {

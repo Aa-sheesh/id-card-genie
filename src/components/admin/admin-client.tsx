@@ -180,7 +180,7 @@ export function AdminClient() {
     setLoadingAllEmail(true);
     const toastId = toast({
       title: 'Processing...',
-      description: 'Image email check is being processed in the background. You will receive an email soon.',
+      description: 'Generating Excel files and ZIP archives for all schools. For large deployments, you will receive Firebase Storage access links.',
       duration: 5000,
     });
     try {
@@ -191,12 +191,20 @@ export function AdminClient() {
       });
       const data = await response.json();
       if (data.success) {
-        toast({ title: 'Email Check Started', description: data.message });
+        toast({ title: 'Excel & ZIP Generation Started', description: data.message });
       } else {
-        throw new Error(data.error || 'Failed to trigger email check');
+        if (data.error?.includes('timed out')) {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Timeout Error', 
+            description: 'Too many files to process. Try processing individual schools instead.' 
+          });
+        } else {
+          throw new Error(data.error || 'Failed to trigger Excel & ZIP generation');
+        }
       }
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to trigger image email check.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to generate Excel & ZIP files.' });
     } finally {
       setLoadingAllEmail(false);
     }
@@ -252,7 +260,7 @@ export function AdminClient() {
                 {loadingAllEmail ? 'Sending...' : <Mail />}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Email All Images</TooltipContent>
+            <TooltipContent>Generate Excel & ZIP for All Schools (Scalable)</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>

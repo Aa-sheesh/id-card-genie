@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ImageIcon, Loader2, User } from 'lucide-react';
 import type { TemplateConfig, PreviewData } from '@/lib/types';
 import { storage } from '@/lib/firebase';
@@ -19,6 +19,10 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [templateUrl, setTemplateUrl] = useState<string | null>(null);
     const [isLoadingUrl, setIsLoadingUrl] = useState(true);
+    const imgRef = useRef<HTMLImageElement>(null);
+    const [renderedWidth, setRenderedWidth] = useState<number | null>(null);
+    const templateWidth = config?.templateDimensions?.width || 856;
+    const templateHeight = config?.templateDimensions?.height || 540;
 
     useEffect(() => {
         let objectUrl: string | null = null;
@@ -57,6 +61,12 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
 
         fetchTemplateUrl();
     }, [config?.templateImagePath]);
+
+    useEffect(() => {
+      if (imgRef.current) {
+        setRenderedWidth(imgRef.current.clientWidth);
+      }
+    }, [templateUrl]);
 
     // Enhanced debug logging for coordinate calculations
     useEffect(() => {
@@ -113,8 +123,8 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
   }
   
   const hasData = previewData && Object.values(previewData).some(v => v);
-  const templateWidth = config.templateDimensions?.width || 856;
-  const templateHeight = config.templateDimensions?.height || 540;
+  // const templateWidth = config.templateDimensions?.width || 856;
+  // const templateHeight = config.templateDimensions?.height || 540;
 
   // Calculate all positions consistently
   const { photoPositions, textPositions } = calculateFieldPositions(config, 'preview');
@@ -130,6 +140,8 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
           }}
         >
           <Image
+              ref={imgRef}
+              id="template-img"
               src={templateUrl}
               alt="ID Card Template"
               width={templateWidth}
@@ -163,31 +175,50 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
           )}
           {textPositions.map((field) => {
             const text = previewData?.[field.id] as string;
-            // Find the matching field in config.textFields to get color and fontFamily
             const configField = config.textFields.find(f => f.id === field.id);
             const color = configField?.color || '#000000';
             const fontFamily = configField?.fontFamily || 'Arial, sans-serif';
-
+            const lines = configField?.lines || 1;
+            const fontSize = field.fontSize;
+            const widthPx = configField?.width || 0;
+            const widthPercent = configField?.width ? (configField.width / templateWidth) * 100 : undefined;
+            // Calculate scale factor
+            const scale = renderedWidth ? renderedWidth / templateWidth : 1;
+            // Scale height and width
+            const heightPx = fontSize * 1.2 * lines * scale;
+            const scaledWidthPx = widthPx * scale;
             return (
               <div
                 key={field.id}
-                className="absolute"
+                className="absolute border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm"
                 style={{
                   left: `${field.left}%`,
                   top: `${field.top}%`,
-                  fontSize: `${field.fontSize}px`,
+                  width: configField?.width ? `${scaledWidthPx}px` : undefined,
+                  height: `${heightPx}px`,
+                  fontSize: `${fontSize * scale}px`,
                   fontWeight: field.fontWeight,
                   color: text ? color : 'transparent',
                   fontFamily,
-                  whiteSpace: 'nowrap',
-                  transform: 'translate(0, 0)', // Ensure no additional transforms
-                  lineHeight: '1', // Consistent line height
+                  whiteSpace: configField?.width ? 'pre-wrap' : 'nowrap',
+                  overflow: 'hidden',
+                  lineHeight: 1.2,
+                  display: 'block',
+                  padding: 0,
+                  textAlign: configField?.textAlign || 'left',
+                  wordWrap: configField?.width ? 'break-word' : 'normal',
                 }}
               >
                 {text || (
-                  <div className="border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm">
+                  <span style={{
+                    textAlign: configField?.textAlign || 'left', 
+                    width: '100%', 
+                    display: 'inline-block',
+                    whiteSpace: configField?.width ? 'pre-wrap' : 'nowrap',
+                    wordWrap: configField?.width ? 'break-word' : 'normal',
+                  }}>
                     {field.name}
-                  </div>
+                  </span>
                 )}
               </div>
             );

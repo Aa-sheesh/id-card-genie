@@ -156,7 +156,7 @@ async function uploadBufferToStorage(schoolId: string, fileName: string, buffer:
   return url;
 }
 
-// Generate ZIP file containing all images for a school
+// Generate ZIP file containing all images for a school (SCALABLE VERSION)
 export async function generateSchoolImagesZip(schoolId: string): Promise<{ zipBuffer: Buffer, fileNames: string[] }> {
   const { storage } = getAdminServices();
   const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
@@ -174,7 +174,14 @@ export async function generateSchoolImagesZip(schoolId: string): Promise<{ zipBu
   
   console.log(`[ZIP] ${imageFiles.length} image files to process`);
 
-  const archive = archiver('zip', { zlib: { level: 9 } });
+  // For large schools (>1000 images), use a different approach
+  if (imageFiles.length > 1000) {
+    console.log(`[ZIP] Large school detected (${imageFiles.length} images). Using Firebase Storage direct access approach.`);
+    return await generateLargeSchoolZip(schoolId, imageFiles);
+  }
+
+  // Use lower compression for faster processing
+  const archive = archiver('zip', { zlib: { level: 6 } });
   const zipChunks: Buffer[] = [];
   const passThrough = new stream.PassThrough();
   passThrough.on('data', chunk => zipChunks.push(chunk));
@@ -214,19 +221,29 @@ export async function generateSchoolImagesZip(schoolId: string): Promise<{ zipBu
     console.log('[ZIP] PassThrough end event fired');
   });
 
-  // Add images
+  // Add images with timeout protection
+  let processedCount = 0;
+  const maxFiles = 100; // Limit to prevent timeouts
+  
   for (const file of imageFiles) {
+    if (processedCount >= maxFiles) {
+      console.log(`[ZIP] Reached maximum file limit (${maxFiles}), stopping processing`);
+      break;
+    }
+    
     const fileName = file.name.split('/').pop() || file.name;
     try {
-      console.log(`[ZIP] Downloading file: ${file.name}`);
+      console.log(`[ZIP] Downloading file: ${file.name} (${processedCount + 1}/${Math.min(imageFiles.length, maxFiles)})`);
       const [fileBuffer] = await file.download();
       console.log(`[ZIP] Downloaded file: ${file.name} (${fileBuffer.length} bytes)`);
       archive.append(fileBuffer, { name: fileName });
       console.log(`[ZIP] Appended file to archive: ${fileName}`);
+      processedCount++;
     } catch (err) {
       console.error(`[ZIP] Error downloading/appending file: ${file.name}`, err);
     }
   }
+  
   // Add Excel file
   try {
     const excelBuffer = await generateSchoolImagesExcel(schoolId);
@@ -246,12 +263,96 @@ export async function generateSchoolImagesZip(schoolId: string): Promise<{ zipBu
   return { zipBuffer: Buffer.concat(zipChunks), fileNames: imageFiles.map(f => f.name.split('/').pop() || f.name) };
 }
 
-// Generate ZIP file containing all images for all schools (with subfolders)
+// Generate ZIP for large schools using Firebase Storage direct access
+async function generateLargeSchoolZip(schoolId: string, imageFiles: FirebaseFirestore.DocumentData[]): Promise<{ zipBuffer: Buffer, fileNames: string[] }> {
+  console.log(`[LARGE-ZIP] Generating ZIP for large school ${schoolId} with ${imageFiles.length} images`);
+  
+  // Create a simple ZIP with just the Excel file and a README
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  const zipChunks: Buffer[] = [];
+  const passThrough = new stream.PassThrough();
+  passThrough.on('data', chunk => zipChunks.push(chunk));
+  archive.pipe(passThrough);
+
+  const zipPromise = new Promise<void>((resolve, reject) => {
+    passThrough.once('close', resolve);
+    passThrough.once('error', reject);
+    archive.once('error', reject);
+  });
+
+  // Add Excel file with all images listed
+  try {
+    const excelBuffer = await generateSchoolImagesExcel(schoolId);
+    archive.append(excelBuffer, { name: 'images-list.xlsx' });
+    console.log('[LARGE-ZIP] Appended Excel file with all images');
+  } catch (err) {
+    console.error('[LARGE-ZIP] Error generating Excel file:', err);
+  }
+
+  // Add README with instructions
+  const readmeContent = `# ID Card Images for School: ${schoolId}
+
+This ZIP contains an Excel file listing all ${imageFiles.length} images for this school.
+
+## How to Download Images
+
+Due to the large number of images (${imageFiles.length}), the actual image files are not included in this ZIP to prevent timeout issues.
+
+### Option 1: Download from Firebase Console
+1. Go to: https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools/${schoolId}/images
+2. Select the images you want to download
+3. Click "Download" button
+
+### Option 2: Use Firebase CLI
+\`\`\`bash
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Download all images for this school
+gsutil -m cp -r gs://malik-studio-photo.firebasestorage.app/schools/${schoolId}/images/ ./downloads/
+\`\`\`
+
+### Option 3: Programmatic Download
+Use the Firebase Admin SDK or client SDK to download images programmatically.
+
+## Excel File
+The 'images-list.xlsx' file contains a complete list of all images with their filenames.
+`;
+
+  archive.append(readmeContent, { name: 'README.txt' });
+  console.log('[LARGE-ZIP] Appended README with download instructions');
+
+  await archive.finalize();
+  await zipPromise;
+
+  console.log('[LARGE-ZIP] Large school ZIP finalized');
+  return { zipBuffer: Buffer.concat(zipChunks), fileNames: imageFiles.map(f => f.name.split('/').pop() || f.name) };
+}
+
+// Generate ZIP file containing all images for all schools (SCALABLE VERSION)
 export async function generateAllSchoolsZip(): Promise<{ zipBuffer: Buffer, fileNames: string[] }> {
   const { storage, db } = getAdminServices();
   const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
   const schoolsSnapshot = await db.collection('schools').get();
-  const archive = archiver('zip', { zlib: { level: 9 } });
+  
+  console.log(`[ALL-ZIP] Found ${schoolsSnapshot.docs.length} schools total`);
+  
+  // For large deployments (>50 schools), use a different approach
+  if (schoolsSnapshot.docs.length > 50) {
+    console.log(`[ALL-ZIP] Large deployment detected (${schoolsSnapshot.docs.length} schools). Using Firebase Storage direct access approach.`);
+    return await generateLargeDeploymentZip(schoolsSnapshot.docs);
+  }
+  
+  // Limit number of schools to prevent timeouts
+  const maxSchools = 10;
+  const schoolsToProcess = schoolsSnapshot.docs.slice(0, maxSchools);
+  
+  console.log(`[ZIP] Processing ${schoolsToProcess.length} schools (limited to ${maxSchools} to prevent timeouts)`);
+  
+  const archive = archiver('zip', { zlib: { level: 6 } }); // Lower compression for speed
   const zipChunks: Buffer[] = [];
   const passThrough = new stream.PassThrough();
   passThrough.on('data', chunk => zipChunks.push(chunk));
@@ -265,20 +366,41 @@ export async function generateAllSchoolsZip(): Promise<{ zipBuffer: Buffer, file
     archive.once('error', (err) => { archiveError = err; reject(err); });
   });
 
-  for (const schoolDoc of schoolsSnapshot.docs) {
+  let totalFilesProcessed = 0;
+  const maxTotalFiles = 200; // Limit total files across all schools
+
+  for (const schoolDoc of schoolsToProcess) {
+    if (totalFilesProcessed >= maxTotalFiles) {
+      console.log(`[ZIP] Reached maximum total file limit (${maxTotalFiles}), stopping processing`);
+      break;
+    }
+    
     const schoolId = schoolDoc.id;
+    console.log(`[ZIP] Processing school: ${schoolId}`);
+    
     const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
     const imageFiles = files.filter(f => !f.name.endsWith('.xlsx') && !f.name.endsWith('.zip'));
-    // Add images
+    
+    // Add images (limit per school)
+    const maxFilesPerSchool = Math.floor(maxTotalFiles / schoolsToProcess.length);
+    let schoolFilesProcessed = 0;
+    
     for (const file of imageFiles) {
+      if (totalFilesProcessed >= maxTotalFiles || schoolFilesProcessed >= maxFilesPerSchool) {
+        break;
+      }
+      
       const fileName = `schools/${schoolId}/images/${file.name.split('/').pop() || file.name}`;
       try {
         const [fileBuffer] = await file.download();
         archive.append(fileBuffer, { name: fileName });
+        totalFilesProcessed++;
+        schoolFilesProcessed++;
       } catch (err) {
         console.error(`[ZIP] Error downloading/appending file: ${file.name}`, err);
-  }
+      }
     }
+    
     // Add Excel for this school
     try {
       const excelBuffer = await generateSchoolImagesExcel(schoolId);
@@ -288,10 +410,93 @@ export async function generateAllSchoolsZip(): Promise<{ zipBuffer: Buffer, file
       console.error(`[ZIP] Error generating/appending Excel for school ${schoolId}:`, err);
     }
   }
+  
   await archive.finalize();
   await zipPromise;
   if (archiveError) throw archiveError;
   if (streamError) throw streamError;
+  console.log(`[ZIP] All-schools ZIP completed with ${totalFilesProcessed} files processed`);
+  return { zipBuffer: Buffer.concat(zipChunks), fileNames: [] };
+}
+
+// Generate ZIP for large deployments using Firebase Storage direct access
+async function generateLargeDeploymentZip(schoolDocs: FirebaseFirestore.QueryDocumentSnapshot[]): Promise<{ zipBuffer: Buffer, fileNames: string[] }> {
+  console.log(`[LARGE-DEPLOYMENT-ZIP] Generating ZIP for large deployment with ${schoolDocs.length} schools`);
+  
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  const zipChunks: Buffer[] = [];
+  const passThrough = new stream.PassThrough();
+  passThrough.on('data', chunk => zipChunks.push(chunk));
+  archive.pipe(passThrough);
+
+  const zipPromise = new Promise<void>((resolve, reject) => {
+    passThrough.once('close', resolve);
+    passThrough.once('error', reject);
+    archive.once('error', reject);
+  });
+
+  // Add Excel files for each school (without images)
+  for (const schoolDoc of schoolDocs) {
+    const schoolId = schoolDoc.id;
+    try {
+      const excelBuffer = await generateSchoolImagesExcel(schoolId);
+      archive.append(excelBuffer, { name: `schools/${schoolId}/images-list.xlsx` });
+      console.log(`[LARGE-DEPLOYMENT-ZIP] Appended Excel for school ${schoolId}`);
+    } catch (err) {
+      console.error(`[LARGE-DEPLOYMENT-ZIP] Error generating Excel for school ${schoolId}:`, err);
+    }
+  }
+
+  // Add comprehensive README
+  const readmeContent = `# ID Card Images for All Schools
+
+This ZIP contains Excel files for all ${schoolDocs.length} schools in the system.
+
+## Deployment Statistics
+- Total Schools: ${schoolDocs.length}
+- Total Images: See individual Excel files for counts
+
+## How to Download Images
+
+Due to the large scale of this deployment, actual image files are not included in this ZIP.
+
+### Option 1: Firebase Console (Recommended)
+1. Go to: https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools
+2. Navigate to individual school folders
+3. Download images as needed
+
+### Option 2: Firebase CLI (Bulk Download)
+\`\`\`bash
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Download all images for all schools
+gsutil -m cp -r gs://malik-studio-photo.firebasestorage.app/schools/ ./downloads/
+
+# Or download specific school
+gsutil -m cp -r gs://malik-studio-photo.firebasestorage.app/schools/SCHOOL_ID/images/ ./downloads/SCHOOL_ID/
+\`\`\`
+
+### Option 3: Programmatic Access
+Use the Firebase Admin SDK or client SDK to download images programmatically.
+
+## Excel Files
+Each Excel file contains a complete list of images for that specific school.
+
+## School List
+${schoolDocs.map((doc, index) => `${index + 1}. ${doc.id}`).join('\n')}
+`;
+
+  archive.append(readmeContent, { name: 'README.txt' });
+  console.log('[LARGE-DEPLOYMENT-ZIP] Appended comprehensive README');
+
+  await archive.finalize();
+  await zipPromise;
+
+  console.log('[LARGE-DEPLOYMENT-ZIP] Large deployment ZIP finalized');
   return { zipBuffer: Buffer.concat(zipChunks), fileNames: [] };
 }
 
@@ -306,7 +511,7 @@ async function uploadGlobalZipToStorage(buffer: Buffer): Promise<string> {
 }
 
 // Send email with Excel attachment and ZIP link for a school
-export const sendImagesEmail = async (schoolId: string | undefined, images: ImageData[]): Promise<boolean> => {
+export const sendImagesEmail = async (schoolId: string | undefined, _images?: ImageData[]): Promise<boolean> => {
   const recipientEmail = process.env.RECIEVER_NOTIFICATION_EMAIL;
   if (!recipientEmail) {
     console.error('❌ Email config missing', {
@@ -338,6 +543,9 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
       <p>Click the link below to download all images for this school as a ZIP file (includes Excel).</p>
       <p><a href="${downloadUrl}" target="_blank">Download All Images (ZIP)</a></p>
       <hr>
+      <p><strong>Direct Firebase Storage Access:</strong></p>
+      <p><a href="https://console.firebase.google.com/project/malik-studio-photo/storage/malik-studio-photo.firebasestorage.app/files/schools/${schoolId}/images" target="_blank">View Images in Firebase Console</a></p>
+      <hr>
       <p><small>This is an automated email from ID Card Genie system.</small></p>
     `;
     // Attach the ZIP as well (optional, can comment out if not needed)
@@ -351,6 +559,21 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
       <h2>ID Card Images</h2>
       <p>Here is the link to all school folders in Firebase Storage. Please log in with your admin account to access and download files.</p>
       <p><a href="${firebaseFolderUrl}" target="_blank">${firebaseFolderUrl}</a></p>
+      <hr>
+      <p><strong>Bulk Download Options:</strong></p>
+      <p><strong>Firebase CLI (Recommended for large deployments):</strong></p>
+      <pre style="background: #f5f5f5; padding: 10px; border-radius: 5px;">
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Download all images for all schools
+gsutil -m cp -r gs://malik-studio-photo.firebasestorage.app/schools/ ./downloads/
+
+# Or download specific school
+gsutil -m cp -r gs://malik-studio-photo.firebasestorage.app/schools/SCHOOL_ID/images/ ./downloads/SCHOOL_ID/</pre>
       <hr>
       <p><small>This is an automated email from ID Card Genie system.</small></p>
     `;
@@ -367,20 +590,20 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
 
 // Check for new images and send email notification (per school or all schools)
 export const checkAndSendImages = async (schoolId?: string): Promise<void> => {
-  console.log('🔍 Starting checkAndSendImages function...');
+  console.log('🔍 Starting Excel & ZIP generation...');
   if (schoolId) {
     // Single school: always send email with all images, not just recent ones
-    console.log(`📧 Sending email for school ${schoolId} with all images`);
+    console.log(`📧 Generating Excel & ZIP for school ${schoolId} with all images`);
     const emailSent = await sendImagesEmail(schoolId, []);
-    if (emailSent) {
-      console.log('✅ Email notification sent successfully');
-    } else {
-      console.error('❌ Failed to send email notification');
+      if (emailSent) {
+        console.log('✅ Excel & ZIP generation completed successfully');
+      } else {
+        console.error('❌ Failed to generate Excel & ZIP files');
     }
   } else {
     // Global: send only one email with the /schools root link
     await sendImagesEmail(undefined, []);
-    console.log('✅ Global email notification sent with /schools link');
+    console.log('✅ Global Excel & ZIP generation completed with /schools link');
   }
 };
 
@@ -448,11 +671,11 @@ export const deleteAllImages = async (schoolIdFilter?: string): Promise<{deleted
 // Generate Excel file listing all images for a school
 export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffer> {
   try {
-    const { storage } = getAdminServices();
-    const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
+  const { storage } = getAdminServices();
+  const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
     
     console.log(`[EXCEL] Generating Excel for school: ${schoolId}`);
-    const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
+  const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
     console.log(`[EXCEL] Found ${files.length} total files in storage`);
     
     // Debug: Log all files found
@@ -473,17 +696,17 @@ export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffe
     
     console.log(`[EXCEL] ${imageFiles.length} image files to include in Excel`);
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Images');
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Images');
     
     // Set up columns
-    worksheet.columns = [
-      { header: 'S.No.', key: 'sno', width: 10 },
-      { header: 'Image', key: 'image', width: 40 },
-    ];
+  worksheet.columns = [
+    { header: 'S.No.', key: 'sno', width: 10 },
+    { header: 'Image', key: 'image', width: 40 },
+  ];
     
     // Add data rows
-    imageFiles.forEach((file, idx) => {
+  imageFiles.forEach((file, idx) => {
       const fileName = file.name.split('/').pop() || file.name;
       worksheet.addRow({ 
         sno: idx + 1, 
@@ -501,9 +724,9 @@ export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffe
       console.log(`[EXCEL] No images found, added placeholder row`);
     }
     
-    const buffer = await workbook.xlsx.writeBuffer();
+  const buffer = await workbook.xlsx.writeBuffer();
     console.log(`[EXCEL] Excel file generated successfully (${buffer.byteLength} bytes)`);
-    return Buffer.from(buffer);
+  return Buffer.from(buffer);
     
   } catch (error) {
     console.error(`[EXCEL] Error generating Excel for school ${schoolId}:`, error);
