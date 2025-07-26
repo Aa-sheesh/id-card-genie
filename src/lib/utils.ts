@@ -550,13 +550,20 @@ function addTextFieldsToCanvas(
       let x = (field.left / 100) * width;
       const y = (field.top / 100) * height;
       
-      // For right alignment, x is the right edge
-      if (textFieldConfig?.textAlign === 'right') {
+      // Apply the same positioning logic as the preview
+      if (textFieldConfig?.textAlign === 'center') {
+        // x is already the center point, no adjustment needed
+        ctx.textAlign = 'center';
+      } else if (textFieldConfig?.textAlign === 'right') {
+        // For right alignment, we need to adjust since our field.left represents the left edge
+        // but we want the right edge to be at that position
         const textWidth = ctx.measureText(text).width;
-        x = x;
+        x = x + textWidth;
+        ctx.textAlign = 'right';
+      } else {
+        // For left alignment, x is the left edge, no adjustment needed
+        ctx.textAlign = 'left';
       }
-      // For center alignment, x is the center (no change)
-      // For left alignment, x is the left edge (no change)
       
       ctx.fillText(text, x, y);
       console.log("📝 JPG Text placement:", {

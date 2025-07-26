@@ -190,16 +190,29 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
             const textAlign = configField?.textAlign || 'left';
             const isAddress = field.id === 'address';
 
+            // Use the exact same positioning logic as the canvas output
+            // For center alignment: x is the center point, no transform needed
+            // For left alignment: x is the left edge, no transform needed  
+            // For right alignment: x is the right edge, no transform needed
             let transform = 'translate(0, 0)';
-            if (textAlign === 'center') transform = 'translate(-50%, 0)';
-            else if (textAlign === 'right') transform = 'translate(-100%, 0)';
+            const leftPosition = field.left;
+            
+            // Apply the same logic as canvas rendering
+            if (textAlign === 'center') {
+              // x is already the center point, no adjustment needed
+              transform = 'translate(-50%, 0)';
+            } else if (textAlign === 'right') {
+              // For right alignment, we need to adjust since our field.left represents the left edge
+              // but we want the right edge to be at that position
+              transform = 'translate(-100%, 0)';
+            }
 
             return (
               <div
                 key={field.id}
                 className="absolute"
                 style={{
-                  left: `${field.left}%`,
+                  left: `${leftPosition}%`,
                   top: `${field.top}%`,
                   fontSize: `${field.fontSize}px`,
                   fontWeight: field.fontWeight,
