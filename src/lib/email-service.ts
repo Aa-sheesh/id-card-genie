@@ -443,20 +443,48 @@ export const deleteAllImages = async (schoolIdFilter?: string): Promise<{deleted
 
 // Generate Excel file listing all images for a school
 export async function generateSchoolImagesExcel(schoolId: string): Promise<Buffer> {
-  const { storage } = getAdminServices();
-  const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
-  const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
-  const imageFiles = files.filter(f => !f.name.endsWith('.xlsx') && !f.name.endsWith('.zip'));
+  try {
+    const { storage } = getAdminServices();
+    const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
+    
+    console.log(`[EXCEL] Generating Excel for school: ${schoolId}`);
+    const [files] = await bucket.getFiles({ prefix: `schools/${schoolId}/images/` });
+    console.log(`[EXCEL] Found ${files.length} total files in storage`);
+    
+    // Filter out Excel and ZIP files, keep only image files
+    const imageFiles = files.filter(f => {
+      const fileName = f.name.toLowerCase();
+      return !fileName.endsWith('.xlsx') && !fileName.endsWith('.zip') && 
+             (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png'));
+    });
+    
+    console.log(`[EXCEL] ${imageFiles.length} image files to include in Excel`);
 
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Images');
-  worksheet.columns = [
-    { header: 'S.No.', key: 'sno', width: 10 },
-    { header: 'Image', key: 'image', width: 40 },
-  ];
-  imageFiles.forEach((file, idx) => {
-    worksheet.addRow({ sno: idx + 1, image: file.name.split('/').pop() });
-  });
-  const buffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buffer);
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Images');
+    
+    // Set up columns
+    worksheet.columns = [
+      { header: 'S.No.', key: 'sno', width: 10 },
+      { header: 'Image', key: 'image', width: 40 },
+    ];
+    
+    // Add data rows
+    imageFiles.forEach((file, idx) => {
+      const fileName = file.name.split('/').pop() || file.name;
+      worksheet.addRow({ 
+        sno: idx + 1, 
+        image: fileName 
+      });
+      console.log(`[EXCEL] Added row ${idx + 1}: ${fileName}`);
+    });
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    console.log(`[EXCEL] Excel file generated successfully (${buffer.byteLength} bytes)`);
+    return Buffer.from(buffer);
+    
+  } catch (error) {
+    console.error(`[EXCEL] Error generating Excel for school ${schoolId}:`, error);
+    throw error;
+  }
 } 
