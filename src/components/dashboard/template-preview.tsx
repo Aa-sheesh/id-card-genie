@@ -15,27 +15,6 @@ interface TemplatePreviewProps {
   previewData?: PreviewData | null;
 }
 
-// Import or define getSampleText
-function getSampleText(fieldId: string): string {
-  const sampleTexts: Record<string, string> = {
-    name: "John Doe",
-    rollNo: "2024001",
-    class: "Class 10",
-    contact: "+91 98765 43210",
-    address: "123 Main Street, City",
-    fatherName: "Father's Name",
-    motherName: "Mother's Name",
-    dob: "01/01/2000",
-    bloodGroup: "O+",
-    section: "A",
-    admissionNo: "ADM001",
-    email: "student@school.com",
-    emergencyContact: "Emergency Contact",
-    default: "Sample Text"
-  };
-  return sampleTexts[fieldId] || sampleTexts.default;
-}
-
 export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
     const [templateUrl, setTemplateUrl] = useState<string | null>(null);
@@ -183,50 +162,33 @@ export function TemplatePreview({ config, previewData }: TemplatePreviewProps) {
               </div>
           )}
           {textPositions.map((field) => {
-            const text = (previewData?.[field.id] as string) || getSampleText(field.id);
+            const text = previewData?.[field.id] as string;
+            // Find the matching field in config.textFields to get color and fontFamily
             const configField = config.textFields.find(f => f.id === field.id);
             const color = configField?.color || '#000000';
             const fontFamily = configField?.fontFamily || 'Arial, sans-serif';
-            const textAlign = configField?.textAlign || 'left';
-            const isAddress = field.id === 'address';
-
-            // Use the exact same positioning logic as the canvas output
-            // For center alignment: x is the center point, no transform needed
-            // For left alignment: x is the left edge, no transform needed  
-            // For right alignment: x is the right edge, no transform needed
-            let transform = 'translate(0, 0)';
-            const leftPosition = field.left;
-            
-            // Apply the same logic as canvas rendering
-            if (textAlign === 'center') {
-              // x is already the center point, no adjustment needed
-              transform = 'translate(-50%, 0)';
-            } else if (textAlign === 'right') {
-              // For right alignment, we need to adjust since our field.left represents the left edge
-              // but we want the right edge to be at that position
-              transform = 'translate(-100%, 0)';
-            }
 
             return (
               <div
                 key={field.id}
                 className="absolute"
                 style={{
-                  left: `${leftPosition}%`,
+                  left: `${field.left}%`,
                   top: `${field.top}%`,
                   fontSize: `${field.fontSize}px`,
                   fontWeight: field.fontWeight,
-                  color,
+                  color: text ? color : 'transparent',
                   fontFamily,
-                  whiteSpace: isAddress ? 'pre' : 'pre',
-                  textAlign,
-                  lineHeight: '1.2',
-                  transform,
-                  width: 'max-content',
-                  maxWidth: '80%',
+                  whiteSpace: 'nowrap',
+                  transform: 'translate(0, 0)', // Ensure no additional transforms
+                  lineHeight: '1', // Consistent line height
                 }}
               >
-                {text}
+                {text || (
+                  <div className="border border-dashed border-red-400 bg-red-400/20 px-1 text-red-800 rounded-sm">
+                    {field.name}
+                  </div>
+                )}
               </div>
             );
           })}

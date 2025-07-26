@@ -196,11 +196,11 @@ export function testCoordinateCalculations() {
     templateDimensions: { width: 856, height: 540 },
     photoPlacement: { x: 40, y: 135, width: 150, height: 162 },
     textFields: [
-      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif", textAlign: "left" },
-      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
-      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
-      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" },
-      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif", textAlign: "left" }
+      { id: "name", name: "Full Name", x: 220, y: 162, fontSize: 20, fontWeight: "bold", color: "#000000", fontFamily: "Arial, sans-serif" },
+      { id: "rollNo", name: "Roll No", x: 220, y: 216, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
+      { id: "class", name: "Class", x: 220, y: 270, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
+      { id: "contact", name: "Contact", x: 220, y: 324, fontSize: 16, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" },
+      { id: "address", name: "Address", x: 220, y: 378, fontSize: 14, fontWeight: "normal", color: "#333333", fontFamily: "Arial, sans-serif" }
     ],
   };
 
@@ -537,35 +537,25 @@ function addTextFieldsToCanvas(
   textPositions.forEach(field => {
     const text = data[field.id]?.toString() || '';
     if (text) {
-      // Find the corresponding text field config to get color, font family, and textAlign
+      // Find the corresponding text field config to get color and font family
       const textFieldConfig = config.textFields.find(f => f.id === field.id);
+      
+      // Set font style with custom font family and weight
       const fontFamily = textFieldConfig?.fontFamily || 'Arial, sans-serif';
       const fontWeight = field.fontWeight === 'bold' ? 'bold' : 'normal';
       ctx.font = `${fontWeight} ${field.fontSize}px ${fontFamily}`;
+      
+      // Set text color from config
       ctx.fillStyle = textFieldConfig?.color || '#000000';
-      ctx.textBaseline = 'top';
-      ctx.textAlign = textFieldConfig?.textAlign || 'left';
+      ctx.textBaseline = 'top'; // Same baseline as preview
       
       // Calculate position using percentages (same as preview)
-      let x = (field.left / 100) * width;
+      const x = (field.left / 100) * width;
       const y = (field.top / 100) * height;
       
-      // Apply the same positioning logic as the preview
-      if (textFieldConfig?.textAlign === 'center') {
-        // x is already the center point, no adjustment needed
-        ctx.textAlign = 'center';
-      } else if (textFieldConfig?.textAlign === 'right') {
-        // For right alignment, we need to adjust since our field.left represents the left edge
-        // but we want the right edge to be at that position
-        const textWidth = ctx.measureText(text).width;
-        x = x + textWidth;
-        ctx.textAlign = 'right';
-      } else {
-        // For left alignment, x is the left edge, no adjustment needed
-        ctx.textAlign = 'left';
-      }
-      
+      // Draw text with exact positioning
       ctx.fillText(text, x, y);
+      
       console.log("📝 JPG Text placement:", {
         id: field.id,
         text: text.substring(0, 20) + (text.length > 20 ? '...' : ''),
@@ -574,8 +564,7 @@ function addTextFieldsToCanvas(
         fontSize: field.fontSize,
         fontWeight: field.fontWeight,
         color: textFieldConfig?.color,
-        fontFamily: textFieldConfig?.fontFamily,
-        textAlign: textFieldConfig?.textAlign || 'left',
+        fontFamily: textFieldConfig?.fontFamily
       });
     }
   });
