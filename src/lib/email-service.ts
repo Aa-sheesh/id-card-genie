@@ -323,7 +323,8 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
   let subject = '';
 
   if (schoolId) {
-    // Per-school: generate/upload ZIP and email link
+    // Per-school: always generate/upload ZIP with all images and email link
+    console.log(`📦 Generating ZIP for school ${schoolId} with all images`);
     const { zipBuffer } = await generateSchoolImagesZip(schoolId);
     const { storage } = getAdminServices();
     const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
@@ -368,18 +369,13 @@ export const sendImagesEmail = async (schoolId: string | undefined, images: Imag
 export const checkAndSendImages = async (schoolId?: string): Promise<void> => {
   console.log('🔍 Starting checkAndSendImages function...');
   if (schoolId) {
-    // Single school
-    const images = await getNewImages(schoolId);
-    console.log(`📊 Found ${images.length} new images for school ${schoolId}`);
-    if (images.length > 0) {
-      const emailSent = await sendImagesEmail(schoolId, images);
-      if (emailSent) {
-        console.log('✅ Email notification sent successfully');
-      } else {
-        console.error('❌ Failed to send email notification');
-      }
+    // Single school: always send email with all images, not just recent ones
+    console.log(`📧 Sending email for school ${schoolId} with all images`);
+    const emailSent = await sendImagesEmail(schoolId, []);
+    if (emailSent) {
+      console.log('✅ Email notification sent successfully');
     } else {
-      console.log('📭 No new images to send');
+      console.error('❌ Failed to send email notification');
     }
   } else {
     // Global: send only one email with the /schools root link
