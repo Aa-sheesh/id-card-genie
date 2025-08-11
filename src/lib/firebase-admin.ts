@@ -13,8 +13,13 @@ let adminServices: {
 
 function initializeAdminApp() {
   try {
+    console.log('🔧 Initializing Firebase Admin...');
+    console.log('🔧 Environment:', process.env.NODE_ENV);
+    console.log('🔧 Has FIREBASE_ADMIN_CREDENTIALS:', !!process.env.FIREBASE_ADMIN_CREDENTIALS);
+    
     // Check if app is already initialized
     if (getApps().length > 0) {
+      console.log('✅ Firebase Admin app already initialized');
       const app = getApp();
       if (!adminServices) {
         adminServices = {
@@ -22,6 +27,7 @@ function initializeAdminApp() {
           db: getFirestore(app),
           storage: getStorage(app),
         };
+        console.log('✅ Admin services created from existing app');
       }
       return adminServices;
     }
@@ -31,29 +37,37 @@ function initializeAdminApp() {
     
     if (process.env.FIREBASE_ADMIN_CREDENTIALS) {
       // Production: Use environment variable
+      console.log('🔧 Using Firebase Admin credentials from environment variable');
       try {
         serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIALS);
+        console.log('✅ Successfully parsed credentials from environment');
       } catch (error) {
-        console.error('🔥 Failed to parse Firebase Admin credentials from environment variable');
+        console.error('🔥 Failed to parse Firebase Admin credentials from environment variable:', error);
         return null;
       }
     } else {
       // Development: Use file
+      console.log('🔧 Looking for Firebase Admin credentials file...');
       const credentialsPath = path.join(process.cwd(), 'firebase-admin-sdk-credentials.json');
+      console.log('🔧 Credentials path:', credentialsPath);
       if (!fs.existsSync(credentialsPath)) {
         console.error('🔥 Firebase Admin SDK credentials file not found at project root!');
         return null;
       }
+      console.log('✅ Found credentials file, reading...');
       serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+      console.log('✅ Successfully read credentials from file');
     }
     
     // Initialize the app
+    console.log('🔧 Initializing Firebase app with storage bucket: malik-studio-photo.firebasestorage.app');
     const app = initializeApp({
       credential: cert(serviceAccount),
       storageBucket: 'malik-studio-photo.firebasestorage.app',
     });
 
     // Initialize services
+    console.log('🔧 Creating admin services...');
     adminServices = {
       auth: getAuth(app),
       db: getFirestore(app),

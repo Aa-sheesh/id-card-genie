@@ -13,7 +13,8 @@
     "lint:fix": "next lint --fix",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next out",
-    "analyze": "ANALYZE=true npm run build"
+    "analyze": "ANALYZE=true npm run build",
+    "setup-admin": "node scripts/setup-admin-credentials.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

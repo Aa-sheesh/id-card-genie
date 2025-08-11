@@ -97,11 +97,22 @@ export function SingleUploadForm({ config, onDataChange }: SingleUploadFormProps
       const uniqueId = rollNo ? `${rollNo}-${Date.now()}` : `entry-${Date.now()}`;
 
       // Get template image using API route to avoid CORS issues
+      console.log("🔍 Fetching template from path:", config.templateImagePath);
       const templateResponse = await fetch(`/api/get-template?path=${encodeURIComponent(config.templateImagePath)}`);
+      console.log("📡 Template response status:", templateResponse.status, templateResponse.statusText);
+      
       if (!templateResponse.ok) {
-        throw new Error(`Failed to fetch template: ${templateResponse.statusText}`);
+        const errorText = await templateResponse.text();
+        console.error("❌ Template fetch failed:", {
+          status: templateResponse.status,
+          statusText: templateResponse.statusText,
+          errorText,
+          templatePath: config.templateImagePath
+        });
+        throw new Error(`Failed to fetch template: ${templateResponse.status} ${templateResponse.statusText} - ${errorText}`);
       }
       const templateBuffer = await templateResponse.arrayBuffer();
+      console.log("✅ Template fetched successfully, size:", templateBuffer.byteLength, "bytes");
 
       // Process photo for PDF
       let photoBuffer: ArrayBuffer | undefined;

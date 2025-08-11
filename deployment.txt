@@ -17,6 +17,7 @@
     - `BREVO_API_KEY`
     - `SENDER_NOTIFICATION_EMAIL`
     - `RECIEVER_NOTIFICATION_EMAIL`
+    - `FIREBASE_ADMIN_CREDENTIALS` (CRITICAL for production - copy the entire JSON content from firebase-admin-sdk-credentials.json as a single line)
     - Any other secrets required by the client
 - [ ] **Never commit `.env.local` or any file with secrets to git.**
 

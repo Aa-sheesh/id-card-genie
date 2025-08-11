@@ -59,6 +59,10 @@ A modern, professional ID card generation and management system built with Next.
    - Create a Firebase project
    - Enable Authentication, Firestore, and Storage
    - Download your service account key and save as `firebase-admin-sdk-credentials.json`
+   - Set up Firebase Admin credentials:
+     ```bash
+     npm run setup-admin
+     ```
    - Deploy security rules:
      ```bash
      firebase deploy --only firestore:rules,storage
@@ -136,14 +140,36 @@ The app includes optimized security rules for Firestore and Storage:
 | `EMAIL_USER` | Email address for sending notifications | ✅ |
 | `EMAIL_PASSWORD` | App password for email service | ✅ |
 | `NOTIFICATION_EMAIL` | Email address to receive PDF summaries | ✅ |
+| `FIREBASE_ADMIN_CREDENTIALS` | Firebase Admin SDK credentials (JSON string) | ✅ |
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
 
 1. Connect your GitHub repository to Vercel
-2. Add environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
+2. Set up Firebase Admin credentials:
+   ```bash
+   npm run setup-admin
+   ```
+3. Add all environment variables in Vercel dashboard (including `FIREBASE_ADMIN_CREDENTIALS`)
+4. Deploy automatically on push to main branch
+
+### Important: Firebase Admin Setup
+
+Before deploying to production, make sure to:
+
+1. **Generate the admin credentials**:
+   ```bash
+   npm run setup-admin
+   ```
+
+2. **Set the environment variable** in your hosting platform:
+   - Copy the `FIREBASE_ADMIN_CREDENTIALS` value from the script output
+   - Add it to your production environment variables
+
+3. **Verify the setup** by testing the deployment
+
+See [docs/template-fetch-error-fix.md](docs/template-fetch-error-fix.md) for detailed troubleshooting.
 
 ### Other Platforms
 

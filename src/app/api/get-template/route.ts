@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminServices } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const templatePath = searchParams.get('path');
+  const { searchParams } = new URL(request.url);
+  const templatePath = searchParams.get('path');
 
-    if (!templatePath) {
-      return NextResponse.json(
-        { error: 'Template path is required' },
-        { status: 400 }
-      );
-    }
+  if (!templatePath) {
+    return NextResponse.json(
+      { error: 'Template path is required' },
+      { status: 400 }
+    );
+  }
+
+  try {
 
     const adminServices = getAdminServices();
     if (!adminServices) {
+      console.error('❌ Firebase Admin not initialized');
       return NextResponse.json(
         { error: 'Firebase Admin not initialized' },
         { status: 500 }
@@ -22,12 +24,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { storage } = adminServices;
+    console.log('🔧 Using storage bucket: malik-studio-photo.firebasestorage.app');
     const bucket = storage.bucket('malik-studio-photo.firebasestorage.app');
     const file = bucket.file(templatePath);
+    console.log('📁 Looking for file at path:', templatePath);
 
     // Check if file exists
+    console.log('🔍 Checking if file exists...');
     const [exists] = await file.exists();
+    console.log('📋 File exists:', exists);
     if (!exists) {
+      console.error('❌ Template file not found at path:', templatePath);
       return NextResponse.json(
         { error: 'Template file not found' },
         { status: 404 }
@@ -54,6 +61,13 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching template:', error);
+    console.error('Error details:', {
+      templatePath: templatePath || 'undefined',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      environment: process.env.NODE_ENV,
+      hasAdminServices: !!getAdminServices(),
+    });
     return NextResponse.json(
       { error: 'Failed to fetch template' },
       { status: 500 }
